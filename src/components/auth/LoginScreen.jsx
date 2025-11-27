@@ -24,15 +24,20 @@ const LoginScreen = ({ onOtpSent }) => {
     setLoading(true);
 
     try {
-      await authAPI.sendOtp(phoneNumber);
+      const response = await authAPI.sendOtp(phoneNumber);
+      console.log('OTP sent successfully:', response.data);
       onOtpSent(phoneNumber);
     } catch (err) {
-      setError(err.response?.data || 'Failed to send OTP. Please try again.');
+      console.error('Error sending OTP:', err);
+      const errorMessage = err.response?.data?.error ||
+                          err.response?.data?.message ||
+                          err.message ||
+                          'Failed to send OTP. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="auth-container">
       <div className="auth-card">
