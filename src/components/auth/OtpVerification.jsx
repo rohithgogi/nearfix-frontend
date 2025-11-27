@@ -61,18 +61,33 @@ const OtpVerification = ({ phoneNumber, onNewUser, onBack }) => {
     setError('');
 
     try {
+      console.log('Verifying OTP for:', phoneNumber, 'Code:', otpCode);
       const response = await authAPI.verifyOtp(phoneNumber, otpCode);
       const data = response.data;
+      console.log('OTP Verification response:', data);
 
-      if (data.isNewUser) {
-        // New user - show role selection
+      // Check if this is a new user (need role selection)
+      if (data.newUser === true) {
+        console.log('New user detected, showing role selection');
         onNewUser(phoneNumber);
-      } else {
-        // Existing user - login directly
+      }
+      // Existing user with token
+      else if (data.jwtToken && data.phoneNumber && data.role) {
+        console.log('Existing user, logging in with role:', data.role);
         login(data.jwtToken, data.phoneNumber, data.role);
       }
+      // Unexpected response
+      else {
+        console.error('Unexpected response structure:', data);
+        setError('Unexpected response from server');
+      }
     } catch (err) {
-      setError(err.response?.data || 'Invalid or expired OTP');
+      console.error('OTP verification error:', err);
+      const errorMessage = err.response?.data?.error ||
+                          err.response?.data?.message ||
+                          err.response?.data ||
+                          'Invalid or expired OTP';
+      setError(errorMessage);
       setOtp(['', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
@@ -87,11 +102,14 @@ const OtpVerification = ({ phoneNumber, onNewUser, onBack }) => {
     setError('');
 
     try {
+      console.log('Resending OTP to:', phoneNumber);
       await authAPI.sendOtp(phoneNumber);
       setResendTimer(30);
       setOtp(['', '', '', '']);
       inputRefs.current[0]?.focus();
+      console.log('OTP resent successfully');
     } catch (err) {
+      console.error('Resend OTP error:', err);
       setError('Failed to resend OTP');
     } finally {
       setLoading(false);
