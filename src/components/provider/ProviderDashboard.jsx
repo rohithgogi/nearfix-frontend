@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import ProviderServicesManagement from './ProviderServicesManagement';
 import './Dashboard.css';
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuth();
   const [availability, setAvailability] = useState('OFFLINE');
+  const [activeTab, setActiveTab] = useState('overview'); // NEW: Tab state
 
   const stats = [
     { label: 'Total Bookings', value: '0', icon: '📋' },
@@ -29,72 +31,129 @@ const ProviderDashboard = () => {
         </div>
       </header>
 
-      <main className="dashboard-main">
-        <section className="provider-status">
-          <div className="status-card">
-            <h3>Availability Status</h3>
-            <div className="status-toggle">
-              <span className={`status-badge ${availability.toLowerCase()}`}>
-                {availability === 'AVAILABLE' ? '🟢' : '🔴'} {availability}
-              </span>
-              <button onClick={toggleAvailability} className="btn-toggle">
-                {availability === 'AVAILABLE' ? 'Go Offline' : 'Go Online'}
-              </button>
-            </div>
-            <p className="status-info">
-              {availability === 'AVAILABLE'
-                ? 'You are visible to customers'
-                : 'Turn on to start receiving bookings'}
-            </p>
-          </div>
-        </section>
+      {/* NEW: Tab Navigation */}
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '20px 20px 0 20px',
+        display: 'flex',
+        gap: '10px',
+        borderBottom: '2px solid #e0e0e0'
+      }}>
+        <button
+          onClick={() => setActiveTab('overview')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'overview' ? '#667eea' : 'transparent',
+            color: activeTab === 'overview' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '16px',
+            transition: 'all 0.3s'
+          }}
+        >
+          📊 Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('services')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'services' ? '#667eea' : 'transparent',
+            color: activeTab === 'services' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '16px',
+            transition: 'all 0.3s'
+          }}
+        >
+          🔧 My Services
+        </button>
+      </div>
 
-        <section className="stats-section">
-          <div className="stats-grid">
-            {stats.map((stat, index) => (
-              <div key={index} className="stat-card">
-                <div className="stat-icon">{stat.icon}</div>
-                <div className="stat-info">
-                  <h4>{stat.value}</h4>
-                  <p>{stat.label}</p>
+      <main className="dashboard-main">
+        {/* NEW: Conditional Rendering Based on Active Tab */}
+        {activeTab === 'overview' ? (
+          <>
+            {/* EXISTING OVERVIEW CONTENT */}
+            <section className="provider-status">
+              <div className="status-card">
+                <h3>Availability Status</h3>
+                <div className="status-toggle">
+                  <span className={`status-badge ${availability.toLowerCase()}`}>
+                    {availability === 'AVAILABLE' ? '🟢' : '🔴'} {availability}
+                  </span>
+                  <button onClick={toggleAvailability} className="btn-toggle">
+                    {availability === 'AVAILABLE' ? 'Go Offline' : 'Go Online'}
+                  </button>
+                </div>
+                <p className="status-info">
+                  {availability === 'AVAILABLE'
+                    ? 'You are visible to customers'
+                    : 'Turn on to start receiving bookings'}
+                </p>
+              </div>
+            </section>
+
+            <section className="stats-section">
+              <div className="stats-grid">
+                {stats.map((stat, index) => (
+                  <div key={index} className="stat-card">
+                    <div className="stat-icon">{stat.icon}</div>
+                    <div className="stat-info">
+                      <h4>{stat.value}</h4>
+                      <p>{stat.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="profile-section">
+              <h3>Complete Your Profile</h3>
+              <div className="profile-progress">
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: '20%' }}></div>
+                </div>
+                <p>20% Complete</p>
+              </div>
+              <div className="profile-tasks">
+                <div className="task-item incomplete">
+                  <span>📝 Add service details</span>
+                  <button
+                    className="btn-small"
+                    onClick={() => setActiveTab('services')}
+                  >
+                    Complete
+                  </button>
+                </div>
+                <div className="task-item incomplete">
+                  <span>📄 Upload documents</span>
+                  <button className="btn-small">Complete</button>
+                </div>
+                <div className="task-item incomplete">
+                  <span>📍 Set service area</span>
+                  <button className="btn-small">Complete</button>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
+            </section>
 
-        <section className="profile-section">
-          <h3>Complete Your Profile</h3>
-          <div className="profile-progress">
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: '20%' }}></div>
-            </div>
-            <p>20% Complete</p>
-          </div>
-          <div className="profile-tasks">
-            <div className="task-item incomplete">
-              <span>📝 Add service details</span>
-              <button className="btn-small">Complete</button>
-            </div>
-            <div className="task-item incomplete">
-              <span>📄 Upload documents</span>
-              <button className="btn-small">Complete</button>
-            </div>
-            <div className="task-item incomplete">
-              <span>📍 Set service area</span>
-              <button className="btn-small">Complete</button>
-            </div>
-          </div>
-        </section>
-
-        <section className="bookings-section">
-          <h3>Booking Requests</h3>
-          <div className="empty-state">
-            <p>📦</p>
-            <p>No booking requests</p>
-            <p className="empty-subtitle">Go online to start receiving bookings</p>
-          </div>
-        </section>
+            <section className="bookings-section">
+              <h3>Booking Requests</h3>
+              <div className="empty-state">
+                <p>📦</p>
+                <p>No booking requests</p>
+                <p className="empty-subtitle">Go online to start receiving bookings</p>
+              </div>
+            </section>
+          </>
+        ) : (
+          /* NEW: Services Management Tab */
+          <ProviderServicesManagement />
+        )}
       </main>
     </div>
   );
