@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import ProviderServicesManagement from './ProviderServicesManagement';
+import ProviderProfileForm from './ProviderProfileForm';
 import './Dashboard.css';
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuth();
   const [availability, setAvailability] = useState('OFFLINE');
-  const [activeTab, setActiveTab] = useState('overview'); // NEW: Tab state
+  const [activeTab, setActiveTab] = useState('overview');
 
   const stats = [
     { label: 'Total Bookings', value: '0', icon: '📋' },
@@ -31,7 +32,7 @@ const ProviderDashboard = () => {
         </div>
       </header>
 
-      {/* NEW: Tab Navigation */}
+      {/* Tab Navigation */}
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
@@ -72,13 +73,28 @@ const ProviderDashboard = () => {
         >
           🔧 My Services
         </button>
+        <button
+          onClick={() => setActiveTab('profile')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'profile' ? '#667eea' : 'transparent',
+            color: activeTab === 'profile' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '16px',
+            transition: 'all 0.3s'
+          }}
+        >
+          👤 Profile
+        </button>
       </div>
 
       <main className="dashboard-main">
-        {/* NEW: Conditional Rendering Based on Active Tab */}
+        {/* Overview Tab */}
         {activeTab === 'overview' ? (
           <>
-            {/* EXISTING OVERVIEW CONTENT */}
             <section className="provider-status">
               <div className="status-card">
                 <h3>Availability Status</h3>
@@ -131,12 +147,22 @@ const ProviderDashboard = () => {
                   </button>
                 </div>
                 <div className="task-item incomplete">
-                  <span>📄 Upload documents</span>
-                  <button className="btn-small">Complete</button>
+                  <span>📄 Complete your profile</span>
+                  <button
+                    className="btn-small"
+                    onClick={() => setActiveTab('profile')}
+                  >
+                    Complete
+                  </button>
                 </div>
                 <div className="task-item incomplete">
                   <span>📍 Set service area</span>
-                  <button className="btn-small">Complete</button>
+                  <button
+                    className="btn-small"
+                    onClick={() => setActiveTab('profile')}
+                  >
+                    Complete
+                  </button>
                 </div>
               </div>
             </section>
@@ -150,9 +176,12 @@ const ProviderDashboard = () => {
               </div>
             </section>
           </>
-        ) : (
-          /* NEW: Services Management Tab */
+        ) : activeTab === 'services' ? (
+          /* Services Management Tab */
           <ProviderServicesManagement />
+        ) : (
+          /* Profile Tab */
+          <ProviderProfileForm onComplete={() => setActiveTab('overview')} />
         )}
       </main>
     </div>

@@ -19,12 +19,15 @@ const ProviderServicesManagement = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
 
   useEffect(() => {
-    console.log('Component mounted, token:', token ? 'exists' : 'missing');
+    const token = localStorage.getItem('token');
+    console.log('🔑 Token found:', token ? 'YES' : 'NO');
+    console.log('🔑 Token preview:', token?.substring(0, 20) + '...');
+
     fetchAllServices();
     if (token) {
       fetchProviderServices();
     } else {
-      setError('Authentication token not found. Please login again.');
+      setError('⚠️ Not authenticated. Please log in again.');
     }
   }, []);
 
