@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import ProviderSearch from './ProviderSearch';
 import './Dashboard.css';
 
 const CustomerDashboard = () => {
   const { user, logout } = useAuth();
+  const [selectedService, setSelectedService] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
 
   const services = [
     { id: 1, name: 'Plumbing', icon: '🔧', color: '#4A90E2' },
@@ -13,6 +17,27 @@ const CustomerDashboard = () => {
     { id: 6, name: 'AC Repair', icon: '❄️', color: '#50E3C2' },
   ];
 
+  const handleServiceClick = (service) => {
+    setSelectedService(service);
+    setShowSearch(true);
+  };
+
+  const handleBackToDashboard = () => {
+    setShowSearch(false);
+    setSelectedService(null);
+  };
+
+  // If search is active, show ProviderSearch component
+  if (showSearch && selectedService) {
+    return (
+      <ProviderSearch
+        initialServiceId={selectedService.id}
+        onBack={handleBackToDashboard}
+      />
+    );
+  }
+
+  // Otherwise show main dashboard
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -39,7 +64,7 @@ const CustomerDashboard = () => {
                 key={service.id}
                 className="service-card"
                 style={{ borderColor: service.color }}
-                onClick={() => alert(`${service.name} - Coming soon!`)}
+                onClick={() => handleServiceClick(service)}
               >
                 <div className="service-icon" style={{ background: service.color }}>
                   {service.icon}
