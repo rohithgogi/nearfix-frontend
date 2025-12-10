@@ -6,6 +6,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
   const [serviceId, setServiceId] = useState(initialServiceId);
   const [services, setServices] = useState([]);
   const [location, setLocation] = useState({ lat: null, lng: null });
+  const [locationStatus, setLocationStatus] = useState('loading'); // 'loading', 'granted', 'denied', 'error'
   const [radius, setRadius] = useState(10);
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
     sortOrder: 'asc'
   });
 
-  // Get token from localStorage
   const getToken = () => localStorage.getItem('token');
 
   useEffect(() => {
@@ -36,19 +36,8 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
         throw new Error(`HTTP ${response.status}`);
       }
       const data = await response.json();
-      console.log('✅ Raw services fetched:', data.length);
-
-      // ✅ FIX: Remove duplicates based on service ID using Map
-      const uniqueServicesMap = new Map();
-      data.forEach(service => {
-        if (!uniqueServicesMap.has(service.id)) {
-          uniqueServicesMap.set(service.id, service);
-        }
-      });
-
-      const uniqueServices = Array.from(uniqueServicesMap.values());
-      console.log('✅ Unique services:', uniqueServices.length);
-      setServices(uniqueServices);
+      console.log('✅ Services fetched:', data.length);
+      setServices(data);
     } catch (err) {
       console.error('❌ Error fetching services:', err);
       setError('Failed to load services: ' + err.message);
@@ -56,35 +45,57 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
   };
 
   const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          console.log('📍 Location obtained:', lat, lng);
-          setLocation({ lat, lng });
-          setLoading(false);
-        },
-        (error) => {
-          console.error('❌ Geolocation error:', error);
-          setError('Please enable location access to search for providers');
-          setLoading(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-    } else {
+    console.log('📍 Requesting location access...');
+
+    if (!navigator.geolocation) {
+      console.error('❌ Geolocation not supported');
+      setLocationStatus('error');
       setError('Geolocation is not supported by your browser');
+      return;
     }
+
+    setLocationStatus('loading');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        console.log('✅ Location obtained:', lat, lng);
+        setLocation({ lat, lng });
+        setLocationStatus('granted');
+        setError(''); // Clear any previous errors
+      },
+      (error) => {
+        console.error('❌ Geolocation error:', error);
+        setLocationStatus('denied');
+
+        let errorMessage = 'Unable to get location. ';
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage += 'Please allow location access in your browser settings.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage += 'Location information is unavailable.';
+            break;
+          case error.TIMEOUT:
+            errorMessage += 'Location request timed out.';
+            break;
+          default:
+            errorMessage += 'An unknown error occurred.';
+        }
+        setError(errorMessage);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
   };
 
   const handleSearch = async () => {
     if (!location.lat || !location.lng) {
-      setError('Location not available. Please allow location access.');
+      setError('Location not available. Please allow location access and try again.');
       return;
     }
 
@@ -153,7 +164,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
         'Content-Type': 'application/json'
       };
 
-      // ✅ FIX: Add Authorization header if token exists
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -261,11 +271,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                   </option>
                 ))}
               </select>
-              {services.length === 0 && (
-                <p style={{ fontSize: '12px', color: '#999', marginTop: '5px' }}>
-                  Loading services...
-                </p>
-              )}
             </div>
 
             <div>
@@ -374,18 +379,42 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
             </div>
           </details>
 
+          {/* Location Status */}
           <div style={{
-            background: location.lat ? '#d4edda' : '#fff3cd',
+            background: locationStatus === 'granted' ? '#d4edda' :
+                       locationStatus === 'loading' ? '#fff3cd' : '#f8d7da',
             padding: '12px',
             borderRadius: '8px',
             marginBottom: '15px',
             fontSize: '14px',
-            border: location.lat ? '1px solid #c3e6cb' : '1px solid #ffeeba'
+            border: locationStatus === 'granted' ? '1px solid #c3e6cb' :
+                    locationStatus === 'loading' ? '1px solid #ffeeba' : '1px solid #f5c6cb'
           }}>
-            {location.lat ? (
+            {locationStatus === 'granted' ? (
               <>📍 Location: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</>
+            ) : locationStatus === 'loading' ? (
+              <>⏳ Requesting location access...</>
+            ) : locationStatus === 'denied' ? (
+              <div>
+                ⚠️ Location access denied.
+                <button
+                  onClick={getCurrentLocation}
+                  style={{
+                    marginLeft: '10px',
+                    padding: '4px 12px',
+                    background: '#667eea',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
             ) : (
-              <>⚠️ Requesting location access...</>
+              <>❌ Location error. Please check browser settings.</>
             )}
           </div>
 
