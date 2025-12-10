@@ -6,7 +6,8 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
   const [serviceId, setServiceId] = useState(initialServiceId);
   const [services, setServices] = useState([]);
   const [location, setLocation] = useState({ lat: null, lng: null });
-  const [locationStatus, setLocationStatus] = useState('loading'); // 'loading', 'granted', 'denied', 'error'
+  const [locationStatus, setLocationStatus] = useState('loading');
+  const [manualLocation, setManualLocation] = useState(false);
   const [radius, setRadius] = useState(10);
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,8 +22,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
     sortOrder: 'asc'
   });
 
-  const getToken = () => localStorage.getItem('token');
-
   useEffect(() => {
     fetchServices();
     getCurrentLocation();
@@ -30,27 +29,20 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
 
   const fetchServices = async () => {
     try {
-      console.log('📡 Fetching services...');
       const response = await fetch(`${API_BASE}/api/services`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      console.log('✅ Services fetched:', data.length);
       setServices(data);
     } catch (err) {
-      console.error('❌ Error fetching services:', err);
-      setError('Failed to load services: ' + err.message);
+      console.error('Error fetching services:', err);
+      setError('Failed to load services');
     }
   };
 
   const getCurrentLocation = () => {
-    console.log('📍 Requesting location access...');
-
     if (!navigator.geolocation) {
-      console.error('❌ Geolocation not supported');
       setLocationStatus('error');
-      setError('Geolocation is not supported by your browser');
+      setManualLocation(true);
       return;
     }
 
@@ -58,32 +50,21 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        console.log('✅ Location obtained:', lat, lng);
-        setLocation({ lat, lng });
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
         setLocationStatus('granted');
-        setError(''); // Clear any previous errors
+        setManualLocation(false);
+        setError('');
       },
       (error) => {
-        console.error('❌ Geolocation error:', error);
+        console.error('Geolocation error:', error);
         setLocationStatus('denied');
+        setManualLocation(true);
 
-        let errorMessage = 'Unable to get location. ';
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += 'Please allow location access in your browser settings.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage += 'Location information is unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMessage += 'Location request timed out.';
-            break;
-          default:
-            errorMessage += 'An unknown error occurred.';
-        }
-        setError(errorMessage);
+        // Set default location (Chennai) as fallback
+        setLocation({ lat: 13.0827, lng: 80.2707 });
       },
       {
         enableHighAccuracy: true,
@@ -93,9 +74,15 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
     );
   };
 
+  const handleManualLocation = (lat, lng) => {
+    setLocation({ lat: parseFloat(lat), lng: parseFloat(lng) });
+    setLocationStatus('manual');
+    setError('');
+  };
+
   const handleSearch = async () => {
     if (!location.lat || !location.lng) {
-      setError('Location not available. Please allow location access and try again.');
+      setError('Please provide a valid location');
       return;
     }
 
@@ -125,28 +112,25 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
 
       const response = await fetch(`${API_BASE}/api/search/providers`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(searchRequest)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Search failed:', response.status, errorText);
         throw new Error(errorText || 'Failed to search providers');
       }
 
       const data = await response.json();
-      console.log('✅ Search results:', data.length, 'providers');
+      console.log('✅ Found:', data.length, 'providers');
       setProviders(data);
 
       if (data.length === 0) {
-        setError('No providers found nearby. Try increasing the search radius or selecting a different service.');
+        setError('No providers found. Try increasing search radius or changing service.');
       }
     } catch (err) {
       console.error('❌ Search error:', err);
-      setError(err.message || 'Failed to search providers. Please try again.');
+      setError(err.message || 'Search failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -154,36 +138,13 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
 
   const viewProviderDetail = async (providerId) => {
     setLoading(true);
-    setError('');
-
     try {
-      console.log('📋 Fetching provider detail for ID:', providerId);
-
-      const token = getToken();
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${API_BASE}/api/search/providers/${providerId}`, {
-        headers: headers
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Failed to fetch provider details:', response.status, errorText);
-        throw new Error('Failed to load provider details');
-      }
-
+      const response = await fetch(`${API_BASE}/api/search/providers/${providerId}`);
+      if (!response.ok) throw new Error('Failed to load provider details');
       const data = await response.json();
-      console.log('✅ Provider detail fetched:', data);
       setSelectedProvider(data);
     } catch (err) {
-      console.error('❌ Error fetching provider details:', err);
-      setError('Failed to load provider details: ' + err.message);
+      setError('Failed to load provider details');
     } finally {
       setLoading(false);
     }
@@ -204,7 +165,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f7fa', padding: '20px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-
         {onBack && (
           <button
             onClick={onBack}
@@ -216,11 +176,8 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
               marginBottom: '20px',
               cursor: 'pointer',
               fontSize: '16px',
-              fontWeight: '600',
-              transition: 'all 0.3s'
+              fontWeight: '600'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
           >
             ← Back to Dashboard
           </button>
@@ -260,8 +217,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                   padding: '12px',
                   borderRadius: '8px',
                   border: '2px solid #e0e0e0',
-                  fontSize: '16px',
-                  cursor: 'pointer'
+                  fontSize: '16px'
                 }}
               >
                 <option value="">Select a service...</option>
@@ -293,6 +249,105 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
             </div>
           </div>
 
+          {/* Location Section - SIMPLE & CLEAN */}
+          {locationStatus === 'denied' || locationStatus === 'error' ? (
+            <div style={{
+              background: '#fff3cd',
+              border: '2px solid #ffc107',
+              padding: '20px',
+              borderRadius: '12px',
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>📍</div>
+              <h3 style={{ margin: '0 0 10px 0', color: '#856404' }}>Location Permission Needed</h3>
+              <p style={{ color: '#856404', marginBottom: '20px', lineHeight: '1.6' }}>
+                To find nearby providers, we need to access your location.<br/>
+                Please click the button below and allow location access.
+              </p>
+              <button
+                onClick={getCurrentLocation}
+                style={{
+                  padding: '14px 30px',
+                  background: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                }}
+              >
+                🔓 Enable Location Access
+              </button>
+              <div style={{
+                marginTop: '20px',
+                padding: '15px',
+                background: 'rgba(255,255,255,0.7)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#666'
+              }}>
+                <strong>💡 How to enable:</strong><br/>
+                1. Click the 🔓 button above<br/>
+                2. When browser asks, click "Allow"<br/>
+                3. If you previously blocked it, click the 🔒 icon in your browser's address bar
+              </div>
+            </div>
+          ) : locationStatus === 'loading' ? (
+            <div style={{
+              background: '#cfe2ff',
+              border: '2px solid #0d6efd',
+              padding: '20px',
+              borderRadius: '12px',
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>⏳</div>
+              <h3 style={{ margin: 0, color: '#084298' }}>Getting your location...</h3>
+              <p style={{ color: '#084298', margin: '10px 0 0 0', fontSize: '14px' }}>
+                This may take a few seconds
+              </p>
+            </div>
+          ) : locationStatus === 'granted' || locationStatus === 'manual' ? (
+            <div style={{
+              background: '#d4edda',
+              border: '2px solid #c3e6cb',
+              padding: '15px',
+              borderRadius: '10px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '24px' }}>📍</span>
+                <div>
+                  <div style={{ fontWeight: '600', color: '#155724' }}>Location Set</div>
+                  <div style={{ fontSize: '13px', color: '#155724', opacity: 0.8 }}>
+                    {location.lat?.toFixed(4)}, {location.lng?.toFixed(4)}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={getCurrentLocation}
+                style={{
+                  padding: '8px 16px',
+                  background: 'white',
+                  border: '2px solid #c3e6cb',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#155724'
+                }}
+              >
+                🔄 Update
+              </button>
+            </div>
+          ) : null}
+
           <details style={{ marginBottom: '15px' }}>
             <summary style={{
               cursor: 'pointer',
@@ -316,13 +371,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                   value={filters.minPrice}
                   onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
                   placeholder="0"
-                  min="0"
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #ddd'
-                  }}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
                 />
               </div>
               <div>
@@ -332,13 +381,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                   value={filters.maxPrice}
                   onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
                   placeholder="10000"
-                  min="0"
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #ddd'
-                  }}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
                 />
               </div>
               <div>
@@ -346,12 +389,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                 <select
                   value={filters.minRating}
                   onChange={(e) => setFilters({...filters, minRating: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #ddd'
-                  }}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
                 >
                   <option value="">Any</option>
                   <option value="3">3+ ⭐</option>
@@ -364,12 +402,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                 <select
                   value={filters.sortBy}
                   onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #ddd'
-                  }}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
                 >
                   <option value="distance">Distance</option>
                   <option value="rating">Rating</option>
@@ -378,45 +411,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
               </div>
             </div>
           </details>
-
-          {/* Location Status */}
-          <div style={{
-            background: locationStatus === 'granted' ? '#d4edda' :
-                       locationStatus === 'loading' ? '#fff3cd' : '#f8d7da',
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '15px',
-            fontSize: '14px',
-            border: locationStatus === 'granted' ? '1px solid #c3e6cb' :
-                    locationStatus === 'loading' ? '1px solid #ffeeba' : '1px solid #f5c6cb'
-          }}>
-            {locationStatus === 'granted' ? (
-              <>📍 Location: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</>
-            ) : locationStatus === 'loading' ? (
-              <>⏳ Requesting location access...</>
-            ) : locationStatus === 'denied' ? (
-              <div>
-                ⚠️ Location access denied.
-                <button
-                  onClick={getCurrentLocation}
-                  style={{
-                    marginLeft: '10px',
-                    padding: '4px 12px',
-                    background: '#667eea',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '13px'
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
-            ) : (
-              <>❌ Location error. Please check browser settings.</>
-            )}
-          </div>
 
           {error && (
             <div style={{
@@ -433,11 +427,11 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
 
           <button
             onClick={handleSearch}
-            disabled={loading || !location.lat || !serviceId}
+            disabled={loading || !location.lat || !location.lng || !serviceId}
             style={{
               width: '100%',
               padding: '14px',
-              background: loading || !location.lat || !serviceId
+              background: loading || !location.lat || !location.lng || !serviceId
                 ? '#ccc'
                 : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
@@ -445,8 +439,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
               borderRadius: '10px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: loading || !location.lat || !serviceId ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s'
+              cursor: loading || !location.lat || !location.lng || !serviceId ? 'not-allowed' : 'pointer'
             }}
           >
             {loading ? '🔄 Searching...' : '🔍 Search Providers'}
@@ -462,7 +455,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
           }}>
             <div style={{ fontSize: '64px', marginBottom: '15px' }}>🔄</div>
             <h3 style={{ margin: '10px 0', color: '#333' }}>Searching...</h3>
-            <p style={{ color: '#666' }}>Finding providers near you</p>
           </div>
         ) : providers.length > 0 ? (
           <>
@@ -483,17 +475,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
               ))}
             </div>
           </>
-        ) : !loading && !error ? (
-          <div style={{
-            background: 'white',
-            borderRadius: '15px',
-            padding: '60px 20px',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '64px', marginBottom: '15px' }}>🔧</div>
-            <h3 style={{ margin: '10px 0', color: '#333' }}>Ready to Search</h3>
-            <p style={{ color: '#666' }}>Select a service and click "Search Providers" to find local providers</p>
-          </div>
         ) : null}
       </div>
     </div>
@@ -507,16 +488,8 @@ function ProviderCard({ provider, onViewDetail }) {
       borderRadius: '15px',
       padding: '20px',
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      transition: 'transform 0.2s, box-shadow 0.2s',
-      cursor: 'pointer'
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = 'translateY(-5px)';
-      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = 'translateY(0)';
-      e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+      cursor: 'pointer',
+      transition: 'transform 0.2s'
     }}
     onClick={onViewDetail}
     >
@@ -542,38 +515,22 @@ function ProviderCard({ provider, onViewDetail }) {
         <div style={{ flex: 1 }}>
           <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
             {provider.businessName}
-            {provider.verified && (
-              <span style={{
-                marginLeft: '5px',
-                color: '#28a745',
-                fontSize: '16px'
-              }}>✓</span>
-            )}
+            {provider.verified && <span style={{ color: '#28a745', marginLeft: '5px' }}>✓</span>}
           </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#666' }}>
+          <div style={{ display: 'flex', gap: '8px', fontSize: '14px', color: '#666' }}>
             <span>⭐ {provider.rating?.toFixed(1) || '0.0'}</span>
             <span>•</span>
-            <span>📍 {provider.distanceKm?.toFixed(1) || '0'} km</span>
+            <span>📍 {provider.distanceKm?.toFixed(1)} km</span>
           </div>
-          {provider.experienceYears && (
-            <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>
-              👔 {provider.experienceYears} years experience
-            </div>
-          )}
         </div>
       </div>
 
-      <div style={{
-        fontSize: '24px',
-        fontWeight: '700',
-        color: '#667eea',
-        marginBottom: '12px'
-      }}>
+      <div style={{ fontSize: '24px', fontWeight: '700', color: '#667eea', marginBottom: '12px' }}>
         Starting at ₹{provider.startingPrice}
       </div>
 
       <div style={{ marginBottom: '15px' }}>
-        <div style={{ fontSize: '13px', color: '#888', marginBottom: '8px' }}>Services Offered:</div>
+        <div style={{ fontSize: '13px', color: '#888', marginBottom: '8px' }}>Services:</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {provider.servicesOffered?.slice(0, 3).map((service, idx) => (
             <span key={idx} style={{
@@ -585,16 +542,6 @@ function ProviderCard({ provider, onViewDetail }) {
               {service.serviceIcon} {service.serviceName}
             </span>
           ))}
-          {provider.servicesOffered?.length > 3 && (
-            <span style={{
-              padding: '4px 10px',
-              background: '#f0f0f0',
-              borderRadius: '12px',
-              fontSize: '12px'
-            }}>
-              +{provider.servicesOffered.length - 3} more
-            </span>
-          )}
         </div>
       </div>
 
@@ -607,16 +554,8 @@ function ProviderCard({ provider, onViewDetail }) {
         borderRadius: '8px',
         fontSize: '14px',
         fontWeight: '600',
-        cursor: 'pointer',
-        transition: 'background 0.3s'
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = '#5568d3'}
-      onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
-      onClick={(e) => {
-        e.stopPropagation();
-        onViewDetail();
-      }}
-      >
+        cursor: 'pointer'
+      }}>
         View Full Profile →
       </button>
     </div>
@@ -627,22 +566,16 @@ function ProviderDetail({ provider, onBack }) {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f7fa', padding: '20px' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: 'white',
-            border: '2px solid #e0e0e0',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: '600',
-            transition: 'all 0.3s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-        >
+        <button onClick={onBack} style={{
+          background: 'white',
+          border: '2px solid #e0e0e0',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          cursor: 'pointer',
+          fontSize: '16px',
+          fontWeight: '600'
+        }}>
           ← Back to Search
         </button>
 
@@ -652,102 +585,19 @@ function ProviderDetail({ provider, onBack }) {
           padding: '40px',
           boxShadow: '0 2px 20px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ display: 'flex', gap: '25px', marginBottom: '30px', alignItems: 'flex-start' }}>
-            <div style={{
-              width: '120px',
-              height: '120px',
-              borderRadius: '15px',
-              background: provider.photoUrl
-                ? `url(${API_BASE}/api/files${provider.photoUrl})`
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '48px',
-              color: 'white'
-            }}>
-              {!provider.photoUrl && '👤'}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <h1 style={{ margin: '0 0 10px 0', fontSize: '32px' }}>
-                {provider.businessName}
-                {provider.verificationStatus === 'VERIFIED' && (
-                  <span style={{
-                    marginLeft: '10px',
-                    fontSize: '16px',
-                    padding: '4px 12px',
-                    background: '#d4edda',
-                    color: '#155724',
-                    borderRadius: '12px'
-                  }}>
-                    ✓ Verified
-                  </span>
-                )}
-              </h1>
-
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', fontSize: '16px', color: '#666', flexWrap: 'wrap' }}>
-                <span>⭐ {provider.rating?.toFixed(1) || '0.0'} ({provider.totalReviews || 0} reviews)</span>
-                <span>•</span>
-                <span>📋 {provider.totalBookings || 0} bookings</span>
-                {provider.experienceYears && (
-                  <>
-                    <span>•</span>
-                    <span>👔 {provider.experienceYears} years exp</span>
-                  </>
-                )}
-              </div>
-
-              <div style={{ color: '#666' }}>
-                📍 {provider.address}, {provider.city} - {provider.pincode}
-              </div>
-            </div>
-          </div>
+          <h1 style={{ fontSize: '32px', marginBottom: '30px' }}>{provider.businessName}</h1>
 
           {provider.services && provider.services.length > 0 && (
             <div style={{ marginBottom: '30px' }}>
-              <h3 style={{ marginBottom: '15px' }}>Services Offered</h3>
+              <h3>Services Offered</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
                 {provider.services.map((service, idx) => (
-                  <div key={idx} style={{
-                    padding: '15px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '12px',
-                    transition: 'all 0.3s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = '#667eea'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
-                  >
+                  <div key={idx} style={{ padding: '15px', border: '2px solid #e0e0e0', borderRadius: '12px' }}>
                     <div style={{ fontSize: '24px', marginBottom: '8px' }}>{service.serviceIcon}</div>
-                    <div style={{ fontWeight: '600', marginBottom: '5px' }}>{service.serviceName}</div>
-                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#667eea' }}>
-                      ₹{service.price}
-                    </div>
+                    <div style={{ fontWeight: '600' }}>{service.serviceName}</div>
+                    <div style={{ fontSize: '18px', color: '#667eea' }}>₹{service.price}</div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {provider.bio && (
-            <div style={{ marginBottom: '30px' }}>
-              <h3 style={{ marginBottom: '10px' }}>About</h3>
-              <p style={{ color: '#666', lineHeight: '1.6', margin: 0 }}>{provider.bio}</p>
-            </div>
-          )}
-
-          {provider.workingHours && provider.workingHours !== '{}' && (
-            <div style={{ marginBottom: '30px' }}>
-              <h3 style={{ marginBottom: '10px' }}>Working Hours</h3>
-              <div style={{
-                background: '#f8f9fa',
-                padding: '15px',
-                borderRadius: '10px',
-                color: '#666'
-              }}>
-                {provider.workingHours}
               </div>
             </div>
           )}
@@ -761,12 +611,8 @@ function ProviderDetail({ provider, onBack }) {
             borderRadius: '12px',
             fontSize: '18px',
             fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'transform 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-          >
+            cursor: 'pointer'
+          }}>
             📅 Book This Provider
           </button>
         </div>
