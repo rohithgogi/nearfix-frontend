@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import ProviderServicesManagement from './ProviderServicesManagement';
 import ProviderProfileForm from './ProviderProfileForm';
+import ProviderBookings from '../booking/ProviderBookings'; // ✅ NEW IMPORT
 import './Dashboard.css';
 
 const ProviderDashboard = () => {
@@ -33,14 +34,16 @@ const ProviderDashboard = () => {
       </header>
 
       {/* Tab Navigation */}
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '20px 20px 0 20px',
-        display: 'flex',
-        gap: '10px',
-        borderBottom: '2px solid #e0e0e0'
-      }}>
+      <div
+        style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '20px 20px 0 20px',
+          display: 'flex',
+          gap: '10px',
+          borderBottom: '2px solid #e0e0e0',
+        }}
+      >
         <button
           onClick={() => setActiveTab('overview')}
           style={{
@@ -52,11 +55,12 @@ const ProviderDashboard = () => {
             cursor: 'pointer',
             fontWeight: '600',
             fontSize: '16px',
-            transition: 'all 0.3s'
+            transition: 'all 0.3s',
           }}
         >
           📊 Overview
         </button>
+
         <button
           onClick={() => setActiveTab('services')}
           style={{
@@ -68,11 +72,12 @@ const ProviderDashboard = () => {
             cursor: 'pointer',
             fontWeight: '600',
             fontSize: '16px',
-            transition: 'all 0.3s'
+            transition: 'all 0.3s',
           }}
         >
           🔧 My Services
         </button>
+
         <button
           onClick={() => setActiveTab('profile')}
           style={{
@@ -84,10 +89,28 @@ const ProviderDashboard = () => {
             cursor: 'pointer',
             fontWeight: '600',
             fontSize: '16px',
-            transition: 'all 0.3s'
+            transition: 'all 0.3s',
           }}
         >
           👤 Profile
+        </button>
+
+        {/* ✅ NEW BOOKINGS TAB BUTTON */}
+        <button
+          onClick={() => setActiveTab('bookings')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'bookings' ? '#667eea' : 'transparent',
+            color: activeTab === 'bookings' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '16px',
+            transition: 'all 0.3s',
+          }}
+        >
+          📋 Bookings
         </button>
       </div>
 
@@ -139,28 +162,19 @@ const ProviderDashboard = () => {
               <div className="profile-tasks">
                 <div className="task-item incomplete">
                   <span>📝 Add service details</span>
-                  <button
-                    className="btn-small"
-                    onClick={() => setActiveTab('services')}
-                  >
+                  <button className="btn-small" onClick={() => setActiveTab('services')}>
                     Complete
                   </button>
                 </div>
                 <div className="task-item incomplete">
                   <span>📄 Complete your profile</span>
-                  <button
-                    className="btn-small"
-                    onClick={() => setActiveTab('profile')}
-                  >
+                  <button className="btn-small" onClick={() => setActiveTab('profile')}>
                     Complete
                   </button>
                 </div>
                 <div className="task-item incomplete">
                   <span>📍 Set service area</span>
-                  <button
-                    className="btn-small"
-                    onClick={() => setActiveTab('profile')}
-                  >
+                  <button className="btn-small" onClick={() => setActiveTab('profile')}>
                     Complete
                   </button>
                 </div>
@@ -179,10 +193,13 @@ const ProviderDashboard = () => {
         ) : activeTab === 'services' ? (
           /* Services Management Tab */
           <ProviderServicesManagement />
-        ) : (
+        ) : activeTab === 'profile' ? (
           /* Profile Tab */
           <ProviderProfileForm onComplete={() => setActiveTab('overview')} />
-        )}
+        ) : activeTab === 'bookings' ? (
+          /* ✅ NEW BOOKINGS TAB */
+          <ProviderBookings />
+        ) : null}
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-
+import BookingForm from '../booking/BookingForm';
 const API_BASE = 'http://localhost:8080';
 
 export default function ProviderSearch({ initialServiceId = 1, onBack = null }) {
@@ -562,61 +562,122 @@ function ProviderCard({ provider, onViewDetail }) {
   );
 }
 
+
 function ProviderDetail({ provider, onBack }) {
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f7fa', padding: '20px' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <button onClick={onBack} style={{
-          background: 'white',
-          border: '2px solid #e0e0e0',
-          padding: '10px 20px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: '600'
-        }}>
+    <div style={{ minHeight: "100vh", background: "#f5f7fa", padding: "20px" }}>
+      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: "white",
+            border: "2px solid #e0e0e0",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            cursor: "pointer",
+            fontSize: "16px",
+            fontWeight: "600",
+          }}
+        >
           ← Back to Search
         </button>
 
-        <div style={{
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          boxShadow: '0 2px 20px rgba(0,0,0,0.1)'
-        }}>
-          <h1 style={{ fontSize: '32px', marginBottom: '30px' }}>{provider.businessName}</h1>
+        <div
+          style={{
+            background: "white",
+            borderRadius: "20px",
+            padding: "40px",
+            boxShadow: "0 2px 20px rgba(0,0,0,0.1)",
+          }}
+        >
+          <h1 style={{ fontSize: "32px", marginBottom: "30px" }}>
+            {provider.businessName}
+          </h1>
 
+          {/* UPDATED SERVICES WITH BOOK BUTTON */}
           {provider.services && provider.services.length > 0 && (
-            <div style={{ marginBottom: '30px' }}>
+            <div style={{ marginBottom: "30px" }}>
               <h3>Services Offered</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: "15px",
+                }}
+              >
                 {provider.services.map((service, idx) => (
-                  <div key={idx} style={{ padding: '15px', border: '2px solid #e0e0e0', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>{service.serviceIcon}</div>
-                    <div style={{ fontWeight: '600' }}>{service.serviceName}</div>
-                    <div style={{ fontSize: '18px', color: '#667eea' }}>₹{service.price}</div>
+                  <div
+                    key={idx}
+                    style={{
+                      padding: "15px",
+                      border: "2px solid #e0e0e0",
+                      borderRadius: "12px",
+                    }}
+                  >
+                    <div style={{ fontSize: "24px", marginBottom: "8px" }}>
+                      {service.serviceIcon}
+                    </div>
+                    <div style={{ fontWeight: "600" }}>
+                      {service.serviceName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "18px",
+                        color: "#667eea",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      ₹{service.price}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSelectedService(service);
+                        setShowBookingForm(true);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        background: "#667eea",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                      }}
+                    >
+                      📅 Book Now
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <button style={{
-            width: '100%',
-            padding: '16px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '18px',
-            fontWeight: '600',
-            cursor: 'pointer'
-          }}>
-            📅 Book This Provider
-          </button>
+          {/* BOOKING FORM SECTION */}
+          {showBookingForm && selectedService && (
+            <BookingForm
+              provider={provider}
+              service={selectedService}
+              onSuccess={(booking) => {
+                setShowBookingForm(false);
+                alert(
+                  `✅ Booking #${booking.id} created successfully! Check "My Bookings" to track status.`
+                );
+              }}
+              onCancel={() => setShowBookingForm(false)}
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
+
+
