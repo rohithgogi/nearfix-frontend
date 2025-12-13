@@ -1,14 +1,73 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import ProviderServicesManagement from './ProviderServicesManagement';
 import ProviderProfileForm from './ProviderProfileForm';
-import ProviderBookings from '../booking/ProviderBookings'; // ✅ NEW IMPORT
+import ProviderBookings from '../booking/ProviderBookings';
 import './Dashboard.css';
+
+const API_BASE = 'http://localhost:8080';
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuth();
   const [availability, setAvailability] = useState('OFFLINE');
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+
+  const token = localStorage.getItem('token');
+
+  // ✅ Fetch provider profile on mount to get current availability
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/provider/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const profile = await response.json();
+        setAvailability(profile.availabilityStatus || 'OFFLINE');
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  // ✅ Toggle availability and update database
+  const toggleAvailability = async () => {
+    const newStatus = availability === 'AVAILABLE' ? 'OFFLINE' : 'AVAILABLE';
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/provider/profile/availability`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          availabilityStatus: newStatus
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update availability');
+      }
+
+      const updatedProfile = await response.json();
+      setAvailability(updatedProfile.availabilityStatus);
+
+      console.log('✅ Availability updated:', updatedProfile.availabilityStatus);
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      alert('Failed to update availability. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats = [
     { label: 'Total Bookings', value: '0', icon: '📋' },
@@ -16,10 +75,6 @@ const ProviderDashboard = () => {
     { label: 'Rating', value: '0.0', icon: '⭐' },
     { label: 'Earnings', value: '₹0', icon: '💰' },
   ];
-
-  const toggleAvailability = () => {
-    setAvailability((prev) => (prev === 'AVAILABLE' ? 'OFFLINE' : 'AVAILABLE'));
-  };
 
   return (
     <div className="dashboard-container">
@@ -95,7 +150,6 @@ const ProviderDashboard = () => {
           👤 Profile
         </button>
 
-        {/* ✅ NEW BOOKINGS TAB BUTTON */}
         <button
           onClick={() => setActiveTab('bookings')}
           style={{
@@ -125,14 +179,23 @@ const ProviderDashboard = () => {
                   <span className={`status-badge ${availability.toLowerCase()}`}>
                     {availability === 'AVAILABLE' ? '🟢' : '🔴'} {availability}
                   </span>
-                  <button onClick={toggleAvailability} className="btn-toggle">
-                    {availability === 'AVAILABLE' ? 'Go Offline' : 'Go Online'}
+                  <button
+                    onClick={toggleAvailability}
+                    className="btn-toggle"
+                    disabled={loading}
+                    style={{ opacity: loading ? 0.6 : 1 }}
+                  >
+                    {loading
+                      ? '⏳ Updating...'
+                      : availability === 'AVAILABLE'
+                        ? 'Go Offline'
+                        : 'Go Online'}
                   </button>
                 </div>
                 <p className="status-info">
                   {availability === 'AVAILABLE'
-                    ? 'You are visible to customers'
-                    : 'Turn on to start receiving bookings'}
+                    ? 'You are visible to customers and can receive bookings'
+                    : 'Turn online to start receiving booking requests'}
                 </p>
               </div>
             </section>
@@ -186,18 +249,19 @@ const ProviderDashboard = () => {
               <div className="empty-state">
                 <p>📦</p>
                 <p>No booking requests</p>
-                <p className="empty-subtitle">Go online to start receiving bookings</p>
+                <p className="empty-subtitle">
+                  {availability === 'AVAILABLE'
+                    ? 'Waiting for customer requests...'
+                    : 'Go online to start receiving bookings'}
+                </p>
               </div>
             </section>
           </>
         ) : activeTab === 'services' ? (
-          /* Services Management Tab */
           <ProviderServicesManagement />
         ) : activeTab === 'profile' ? (
-          /* Profile Tab */
           <ProviderProfileForm onComplete={() => setActiveTab('overview')} />
         ) : activeTab === 'bookings' ? (
-          /* ✅ NEW BOOKINGS TAB */
           <ProviderBookings />
         ) : null}
       </main>

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import BookingForm from '../booking/BookingForm';
+import ProviderReviewsSection from '../reviews/ProviderReviewsSection';
+
 const API_BASE = 'http://localhost:8080';
 
 export default function ProviderSearch({ initialServiceId = 1, onBack = null }) {
@@ -7,7 +9,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
   const [services, setServices] = useState([]);
   const [location, setLocation] = useState({ lat: null, lng: null });
   const [locationStatus, setLocationStatus] = useState('loading');
-  const [manualLocation, setManualLocation] = useState(false);
   const [radius, setRadius] = useState(10);
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,7 +43,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setLocationStatus('error');
-      setManualLocation(true);
       return;
     }
 
@@ -55,15 +55,11 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
           lng: position.coords.longitude
         });
         setLocationStatus('granted');
-        setManualLocation(false);
         setError('');
       },
       (error) => {
         console.error('Geolocation error:', error);
         setLocationStatus('denied');
-        setManualLocation(true);
-
-        // Set default location (Chennai) as fallback
         setLocation({ lat: 13.0827, lng: 80.2707 });
       },
       {
@@ -72,12 +68,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
         maximumAge: 0
       }
     );
-  };
-
-  const handleManualLocation = (lat, lng) => {
-    setLocation({ lat: parseFloat(lat), lng: parseFloat(lng) });
-    setLocationStatus('manual');
-    setError('');
   };
 
   const handleSearch = async () => {
@@ -108,8 +98,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
         sortOrder: filters.sortOrder
       };
 
-      console.log('🔍 Searching with:', searchRequest);
-
       const response = await fetch(`${API_BASE}/api/search/providers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,14 +110,12 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
       }
 
       const data = await response.json();
-      console.log('✅ Found:', data.length, 'providers');
       setProviders(data);
 
       if (data.length === 0) {
         setError('No providers found. Try increasing search radius or changing service.');
       }
     } catch (err) {
-      console.error('❌ Search error:', err);
       setError(err.message || 'Search failed. Please try again.');
     } finally {
       setLoading(false);
@@ -161,6 +147,8 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
       />
     );
   }
+
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f7fa', padding: '20px' }}>
@@ -249,7 +237,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
             </div>
           </div>
 
-          {/* Location Section - SIMPLE & CLEAN */}
+          {/* Location Section */}
           {locationStatus === 'denied' || locationStatus === 'error' ? (
             <div style={{
               background: '#fff3cd',
@@ -281,19 +269,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
               >
                 🔓 Enable Location Access
               </button>
-              <div style={{
-                marginTop: '20px',
-                padding: '15px',
-                background: 'rgba(255,255,255,0.7)',
-                borderRadius: '8px',
-                fontSize: '13px',
-                color: '#666'
-              }}>
-                <strong>💡 How to enable:</strong><br/>
-                1. Click the 🔓 button above<br/>
-                2. When browser asks, click "Allow"<br/>
-                3. If you previously blocked it, click the 🔒 icon in your browser's address bar
-              </div>
             </div>
           ) : locationStatus === 'loading' ? (
             <div style={{
@@ -306,11 +281,8 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
             }}>
               <div style={{ fontSize: '48px', marginBottom: '15px' }}>⏳</div>
               <h3 style={{ margin: 0, color: '#084298' }}>Getting your location...</h3>
-              <p style={{ color: '#084298', margin: '10px 0 0 0', fontSize: '14px' }}>
-                This may take a few seconds
-              </p>
             </div>
-          ) : locationStatus === 'granted' || locationStatus === 'manual' ? (
+          ) : (
             <div style={{
               background: '#d4edda',
               border: '2px solid #c3e6cb',
@@ -346,7 +318,7 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                 🔄 Update
               </button>
             </div>
-          ) : null}
+          )}
 
           <details style={{ marginBottom: '15px' }}>
             <summary style={{
@@ -562,7 +534,6 @@ function ProviderCard({ provider, onViewDetail }) {
   );
 }
 
-
 function ProviderDetail({ provider, onBack }) {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
@@ -598,15 +569,14 @@ function ProviderDetail({ provider, onBack }) {
             {provider.businessName}
           </h1>
 
-          {/* UPDATED SERVICES WITH BOOK BUTTON */}
+          {/* Services */}
           {provider.services && provider.services.length > 0 && (
             <div style={{ marginBottom: "30px" }}>
               <h3>Services Offered</h3>
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fill, minmax(200px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
                   gap: "15px",
                 }}
               >
@@ -660,7 +630,10 @@ function ProviderDetail({ provider, onBack }) {
             </div>
           )}
 
-          {/* BOOKING FORM SECTION */}
+          {/* ✅ REVIEWS SECTION */}
+          <ProviderReviewsSection providerId={provider.providerId} />
+
+          {/* Booking Form */}
           {showBookingForm && selectedService && (
             <BookingForm
               provider={provider}
@@ -679,5 +652,3 @@ function ProviderDetail({ provider, onBack }) {
     </div>
   );
 }
-
-

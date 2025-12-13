@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import ReviewForm from './ReviewForm';
 
 const API_BASE = 'http://localhost:8080';
 
@@ -17,6 +18,8 @@ export default function CustomerBookings() {
   const [filter, setFilter] = useState('all');
   const [showCancelModal, setShowCancelModal] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [showReviewForm, setShowReviewForm] = useState(null);
+  const [bookingReviews, setBookingReviews] = useState({});
 
   const token = localStorage.getItem('token');
 
@@ -40,10 +43,32 @@ export default function CustomerBookings() {
 
       const data = await response.json();
       setBookings(data);
+
+      // Check which bookings have reviews
+      for (const booking of data) {
+        if (booking.status === 'COMPLETED') {
+          checkIfReviewed(booking.id);
+        }
+      }
     } catch (error) {
       console.error('Error fetching bookings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkIfReviewed = async (bookingId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/reviews/booking/${bookingId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const review = await response.json();
+        setBookingReviews(prev => ({ ...prev, [bookingId]: review }));
+      }
+    } catch (error) {
+      // Review doesn't exist, that's fine
     }
   };
 
@@ -81,6 +106,14 @@ export default function CustomerBookings() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const renderStars = (rating) => {
+    return (
+      <span style={{ color: '#ffc107', fontSize: '16px' }}>
+        {'★'.repeat(rating)}{'☆'.repeat(5 - rating)}
+      </span>
+    );
   };
 
   if (loading) {
@@ -131,121 +164,177 @@ export default function CustomerBookings() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {bookings.map(booking => (
-              <div key={booking.id} style={{
-                background: 'white',
-                borderRadius: '15px',
-                padding: '20px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
-                  <div>
-                    <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '5px' }}>
-                      Booking #{booking.id}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>
-                      Created {formatDate(booking.createdAt)}
-                    </div>
-                  </div>
-                  <div style={{
-                    padding: '6px 16px',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    background: STATUS_CONFIG[booking.status]?.bg,
-                    color: STATUS_CONFIG[booking.status]?.color
-                  }}>
-                    {STATUS_CONFIG[booking.status]?.label}
-                  </div>
-                </div>
+            {bookings.map(booking => {
+              const hasReview = bookingReviews[booking.id];
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Service</div>
-                    <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                      {booking.serviceIcon} {booking.serviceName}
+              return (
+                <div key={booking.id} style={{
+                  background: 'white',
+                  borderRadius: '15px',
+                  padding: '20px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
+                    <div>
+                      <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '5px' }}>
+                        Booking #{booking.id}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        Created {formatDate(booking.createdAt)}
+                      </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Provider</div>
-                    <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                      {booking.providerBusinessName}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>
-                      {booking.providerPhone}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Scheduled</div>
-                    <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                      📅 {formatDate(booking.scheduledDateTime)}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Price</div>
-                    <div style={{ fontSize: '20px', fontWeight: '700', color: '#667eea' }}>
-                      ₹{booking.finalPrice || booking.quotedPrice}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '15px' }}>
-                  <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Address</div>
-                  <div style={{ fontSize: '14px' }}>
-                    📍 {booking.customerAddress}
-                  </div>
-                </div>
-
-                {booking.description && (
-                  <div style={{ marginBottom: '15px' }}>
-                    <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Details</div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>
-                      {booking.description}
-                    </div>
-                  </div>
-                )}
-
-                {booking.cancellationReason && (
-                  <div style={{
-                    background: '#f8d7da',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    marginBottom: '15px'
-                  }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '5px' }}>
-                      Cancellation Reason:
-                    </div>
-                    <div style={{ fontSize: '14px' }}>
-                      {booking.cancellationReason}
-                    </div>
-                  </div>
-                )}
-
-                {booking.canBeCancelled && (
-                  <button
-                    onClick={() => setShowCancelModal(booking)}
-                    style={{
-                      padding: '10px 20px',
-                      background: '#ff4757',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
+                    <div style={{
+                      padding: '6px 16px',
+                      borderRadius: '20px',
+                      fontSize: '14px',
                       fontWeight: '600',
-                      fontSize: '14px'
-                    }}
-                  >
-                    ✗ Cancel Booking
-                  </button>
-                )}
-              </div>
-            ))}
+                      background: STATUS_CONFIG[booking.status]?.bg,
+                      color: STATUS_CONFIG[booking.status]?.color
+                    }}>
+                      {STATUS_CONFIG[booking.status]?.label}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Service</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600' }}>
+                        {booking.serviceIcon} {booking.serviceName}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Provider</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600' }}>
+                        {booking.providerBusinessName}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        {booking.providerPhone}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Scheduled</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600' }}>
+                        📅 {formatDate(booking.scheduledDateTime)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Price</div>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#667eea' }}>
+                        ₹{booking.finalPrice || booking.quotedPrice}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Address</div>
+                    <div style={{ fontSize: '14px' }}>
+                      📍 {booking.customerAddress}
+                    </div>
+                  </div>
+
+                  {booking.description && (
+                    <div style={{ marginBottom: '15px' }}>
+                      <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Details</div>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        {booking.description}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ✅ REVIEW SECTION */}
+                  {booking.status === 'COMPLETED' && (
+                    <div style={{
+                      background: hasReview ? '#d4edda' : '#fff3cd',
+                      padding: '15px',
+                      borderRadius: '10px',
+                      marginBottom: '15px'
+                    }}>
+                      {hasReview ? (
+                        <div>
+                          <div style={{ fontWeight: '600', marginBottom: '8px', color: '#155724' }}>
+                            ⭐ Your Review
+                          </div>
+                          <div style={{ marginBottom: '8px' }}>
+                            {renderStars(hasReview.rating)}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#155724' }}>
+                            "{hasReview.comment}"
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                            Reviewed on {formatDate(hasReview.createdAt)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontWeight: '600', marginBottom: '8px', color: '#856404' }}>
+                            ⭐ Service Completed
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#856404', marginBottom: '10px' }}>
+                            How was your experience? Share your feedback!
+                          </div>
+                          <button
+                            onClick={() => setShowReviewForm(booking)}
+                            style={{
+                              padding: '10px 20px',
+                              background: '#667eea',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '14px'
+                            }}
+                          >
+                            ⭐ Write Review
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {booking.cancellationReason && (
+                    <div style={{
+                      background: '#f8d7da',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '15px'
+                    }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '5px' }}>
+                        Cancellation Reason:
+                      </div>
+                      <div style={{ fontSize: '14px' }}>
+                        {booking.cancellationReason}
+                      </div>
+                    </div>
+                  )}
+
+                  {booking.canBeCancelled && (
+                    <button
+                      onClick={() => setShowCancelModal(booking)}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#ff4757',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ✗ Cancel Booking
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
+        {/* Cancel Modal */}
         {showCancelModal && (
           <div style={{
             position: 'fixed',
@@ -327,6 +416,19 @@ export default function CustomerBookings() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ✅ Review Form Modal */}
+        {showReviewForm && (
+          <ReviewForm
+            booking={showReviewForm}
+            onSuccess={(review) => {
+              setShowReviewForm(null);
+              alert('✅ Thank you for your review!');
+              fetchBookings(); // Refresh to show the review
+            }}
+            onCancel={() => setShowReviewForm(null)}
+          />
         )}
       </div>
     </div>
