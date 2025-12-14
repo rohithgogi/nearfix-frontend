@@ -12,14 +12,31 @@ const ProviderDashboard = () => {
   const [availability, setAvailability] = useState('OFFLINE');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    completedBookings: 0,
+    pendingBookings: 0,
+    rating: 0.0,
+    totalReviews: 0,
+    earnings: 0
+  });
 
   const token = localStorage.getItem('token');
 
-  // ✅ Fetch provider profile on mount to get current availability
+  // ✅ Fetch profile and stats on mount
   useEffect(() => {
     fetchProfile();
+    fetchBookingStats();
+    // Refresh stats every 30 seconds
+    const interval = setInterval(() => {
+      fetchProfile();
+      fetchBookingStats();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
+  // ✅ Fetch provider profile (includes rating and reviews)
   const fetchProfile = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/provider/profile`, {
@@ -27,11 +44,50 @@ const ProviderDashboard = () => {
       });
 
       if (response.ok) {
-        const profile = await response.json();
-        setAvailability(profile.availabilityStatus || 'OFFLINE');
+        const data = await response.json();
+        setProfile(data);
+        setAvailability(data.availabilityStatus || 'OFFLINE');
+
+        // Update rating stats from profile
+        setStats(prev => ({
+          ...prev,
+          rating: data.rating || 0.0,
+          totalReviews: data.totalReviews || 0
+        }));
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+    }
+  };
+
+  // ✅ Fetch booking statistics
+  const fetchBookingStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/bookings/provider`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const bookings = await response.json();
+
+        // Calculate stats from bookings
+        const totalBookings = bookings.length;
+        const completedBookings = bookings.filter(b => b.status === 'COMPLETED').length;
+        const pendingBookings = bookings.filter(b => b.status === 'PENDING').length;
+        const earnings = bookings
+          .filter(b => b.status === 'COMPLETED' && b.finalPrice)
+          .reduce((sum, b) => sum + parseFloat(b.finalPrice), 0);
+
+        setStats(prev => ({
+          ...prev,
+          totalBookings,
+          completedBookings,
+          pendingBookings,
+          earnings
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching booking stats:', error);
     }
   };
 
@@ -69,12 +125,11 @@ const ProviderDashboard = () => {
     }
   };
 
-  const stats = [
-    { label: 'Total Bookings', value: '0', icon: '📋' },
-    { label: 'Completed', value: '0', icon: '✅' },
-    { label: 'Rating', value: '0.0', icon: '⭐' },
-    { label: 'Earnings', value: '₹0', icon: '💰' },
-  ];
+  // ✅ Calculate profile completion percentage
+  const getProfileCompletion = () => {
+    if (!profile) return 0;
+    return profile.profileCompletionPercentage || 0;
+  };
 
   return (
     <div className="dashboard-container">
@@ -165,6 +220,18 @@ const ProviderDashboard = () => {
           }}
         >
           📋 Bookings
+          {stats.pendingBookings > 0 && (
+            <span style={{
+              marginLeft: '8px',
+              background: '#ff4757',
+              color: 'white',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '12px'
+            }}>
+              {stats.pendingBookings}
+            </span>
+          )}
         </button>
       </div>
 
@@ -200,67 +267,155 @@ const ProviderDashboard = () => {
               </div>
             </section>
 
+            {/* ✅ REAL-TIME STATS */}
             <section className="stats-section">
               <div className="stats-grid">
-                {stats.map((stat, index) => (
-                  <div key={index} className="stat-card">
-                    <div className="stat-icon">{stat.icon}</div>
-                    <div className="stat-info">
-                      <h4>{stat.value}</h4>
-                      <p>{stat.label}</p>
-                    </div>
+                <div className="stat-card">
+                  <div className="stat-icon">📋</div>
+                  <div className="stat-info">
+                    <h4>{stats.totalBookings}</h4>
+                    <p>Total Bookings</p>
                   </div>
-                ))}
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon">✅</div>
+                  <div className="stat-info">
+                    <h4>{stats.completedBookings}</h4>
+                    <p>Completed</p>
+                  </div>
+                </div>
+
+                <div className="stat-card" style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white'
+                }}>
+                  <div className="stat-icon" style={{ fontSize: '48px' }}>⭐</div>
+                  <div className="stat-info">
+                    <h4 style={{ color: 'white' }}>{stats.rating?.toFixed(1) || '0.0'}</h4>
+                    <p style={{ color: 'white' }}>
+                      Rating ({stats.totalReviews} review{stats.totalReviews !== 1 ? 's' : ''})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon">💰</div>
+                  <div className="stat-info">
+                    <h4>₹{stats.earnings.toFixed(0)}</h4>
+                    <p>Total Earnings</p>
+                  </div>
+                </div>
               </div>
             </section>
 
+            {/* Profile Completion */}
             <section className="profile-section">
               <h3>Complete Your Profile</h3>
               <div className="profile-progress">
                 <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '20%' }}></div>
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${getProfileCompletion()}%` }}
+                  ></div>
                 </div>
-                <p>20% Complete</p>
+                <p>{getProfileCompletion()}% Complete</p>
               </div>
-              <div className="profile-tasks">
-                <div className="task-item incomplete">
-                  <span>📝 Add service details</span>
-                  <button className="btn-small" onClick={() => setActiveTab('services')}>
-                    Complete
-                  </button>
+
+              {getProfileCompletion() < 100 && (
+                <div className="profile-tasks">
+                  {(!profile?.businessName || !profile?.address) && (
+                    <div className="task-item incomplete">
+                      <span>📝 Add business details & location</span>
+                      <button className="btn-small" onClick={() => setActiveTab('profile')}>
+                        Complete
+                      </button>
+                    </div>
+                  )}
+
+                  {!profile?.photoUrl && (
+                    <div className="task-item incomplete">
+                      <span>📷 Upload profile photo</span>
+                      <button className="btn-small" onClick={() => setActiveTab('profile')}>
+                        Complete
+                      </button>
+                    </div>
+                  )}
+
+                  {!profile?.aadharUrl && (
+                    <div className="task-item incomplete">
+                      <span>📄 Upload ID document</span>
+                      <button className="btn-small" onClick={() => setActiveTab('profile')}>
+                        Complete
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="task-item incomplete">
-                  <span>📄 Complete your profile</span>
-                  <button className="btn-small" onClick={() => setActiveTab('profile')}>
-                    Complete
-                  </button>
+              )}
+
+              {getProfileCompletion() === 100 && (
+                <div style={{
+                  background: '#d4edda',
+                  padding: '20px',
+                  borderRadius: '10px',
+                  textAlign: 'center',
+                  marginTop: '20px'
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '10px' }}>🎉</div>
+                  <h3 style={{ margin: '0 0 10px 0', color: '#155724' }}>
+                    Profile Complete!
+                  </h3>
+                  <p style={{ margin: 0, color: '#155724' }}>
+                    Your profile is fully set up and ready to receive bookings
+                  </p>
                 </div>
-                <div className="task-item incomplete">
-                  <span>📍 Set service area</span>
-                  <button className="btn-small" onClick={() => setActiveTab('profile')}>
-                    Complete
-                  </button>
-                </div>
-              </div>
+              )}
             </section>
 
-            <section className="bookings-section">
-              <h3>Booking Requests</h3>
-              <div className="empty-state">
-                <p>📦</p>
-                <p>No booking requests</p>
-                <p className="empty-subtitle">
-                  {availability === 'AVAILABLE'
-                    ? 'Waiting for customer requests...'
-                    : 'Go online to start receiving bookings'}
-                </p>
+            {/* Quick Actions */}
+            <section style={{ marginTop: '30px' }}>
+              <h3>Quick Actions</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                <button
+                  onClick={() => setActiveTab('bookings')}
+                  style={{
+                    padding: '15px',
+                    background: 'white',
+                    border: '2px solid #667eea',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '16px',
+                    color: '#667eea'
+                  }}
+                >
+                  📋 View Bookings
+                </button>
+                <button
+                  onClick={() => setActiveTab('services')}
+                  style={{
+                    padding: '15px',
+                    background: 'white',
+                    border: '2px solid #667eea',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '16px',
+                    color: '#667eea'
+                  }}
+                >
+                  🔧 Manage Services
+                </button>
               </div>
             </section>
           </>
         ) : activeTab === 'services' ? (
           <ProviderServicesManagement />
         ) : activeTab === 'profile' ? (
-          <ProviderProfileForm onComplete={() => setActiveTab('overview')} />
+          <ProviderProfileForm onComplete={() => {
+            setActiveTab('overview');
+            fetchProfile(); // Refresh profile after completion
+          }} />
         ) : activeTab === 'bookings' ? (
           <ProviderBookings />
         ) : null}

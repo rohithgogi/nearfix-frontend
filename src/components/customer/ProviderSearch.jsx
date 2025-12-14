@@ -40,9 +40,11 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
     }
   };
 
+  // ✅ OPTIMIZED LOCATION FETCHING
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setLocationStatus('error');
+      setLocation({ lat: 13.0827, lng: 80.2707 }); // Default to Chennai
       return;
     }
 
@@ -60,12 +62,12 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
       (error) => {
         console.error('Geolocation error:', error);
         setLocationStatus('denied');
-        setLocation({ lat: 13.0827, lng: 80.2707 });
+        setLocation({ lat: 13.0827, lng: 80.2707 }); // Default to Chennai
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: false,  // ✅ Use WiFi/Cell tower (FAST - 1-3 seconds)
+        timeout: 5000,               // ✅ Reduced timeout to 5 seconds
+        maximumAge: 300000           // ✅ Use cached location if less than 5 minutes old
       }
     );
   };
@@ -147,8 +149,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
       />
     );
   }
-
-  const today = new Date().toISOString().split('T')[0];
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f7fa', padding: '20px' }}>
@@ -237,8 +237,23 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
             </div>
           </div>
 
-          {/* Location Section */}
-          {locationStatus === 'denied' || locationStatus === 'error' ? (
+          {/* Location Status with Accuracy Info */}
+          {locationStatus === 'loading' ? (
+            <div style={{
+              background: '#cfe2ff',
+              border: '2px solid #0d6efd',
+              padding: '20px',
+              borderRadius: '12px',
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>⏳</div>
+              <h3 style={{ margin: 0, color: '#084298' }}>Getting your location...</h3>
+              <p style={{ fontSize: '14px', color: '#084298', marginTop: '10px' }}>
+                Using WiFi/Cell tower for quick location (accurate within 100-500m)
+              </p>
+            </div>
+          ) : locationStatus === 'denied' || locationStatus === 'error' ? (
             <div style={{
               background: '#fff3cd',
               border: '2px solid #ffc107',
@@ -250,8 +265,8 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
               <div style={{ fontSize: '48px', marginBottom: '15px' }}>📍</div>
               <h3 style={{ margin: '0 0 10px 0', color: '#856404' }}>Location Permission Needed</h3>
               <p style={{ color: '#856404', marginBottom: '20px', lineHeight: '1.6' }}>
-                To find nearby providers, we need to access your location.<br/>
-                Please click the button below and allow location access.
+                We've set a default location (Chennai).<br/>
+                For better results, enable location access.
               </p>
               <button
                 onClick={getCurrentLocation}
@@ -270,18 +285,6 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                 🔓 Enable Location Access
               </button>
             </div>
-          ) : locationStatus === 'loading' ? (
-            <div style={{
-              background: '#cfe2ff',
-              border: '2px solid #0d6efd',
-              padding: '20px',
-              borderRadius: '12px',
-              marginBottom: '20px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '15px' }}>⏳</div>
-              <h3 style={{ margin: 0, color: '#084298' }}>Getting your location...</h3>
-            </div>
           ) : (
             <div style={{
               background: '#d4edda',
@@ -299,6 +302,9 @@ export default function ProviderSearch({ initialServiceId = 1, onBack = null }) 
                   <div style={{ fontWeight: '600', color: '#155724' }}>Location Set</div>
                   <div style={{ fontSize: '13px', color: '#155724', opacity: 0.8 }}>
                     {location.lat?.toFixed(4)}, {location.lng?.toFixed(4)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#155724', opacity: 0.7, marginTop: '3px' }}>
+                    ℹ️ Accurate within 100-500 meters (WiFi/Cell tower)
                   </div>
                 </div>
               </div>
@@ -569,7 +575,6 @@ function ProviderDetail({ provider, onBack }) {
             {provider.businessName}
           </h1>
 
-          {/* Services */}
           {provider.services && provider.services.length > 0 && (
             <div style={{ marginBottom: "30px" }}>
               <h3>Services Offered</h3>
@@ -630,10 +635,8 @@ function ProviderDetail({ provider, onBack }) {
             </div>
           )}
 
-          {/* ✅ REVIEWS SECTION */}
           <ProviderReviewsSection providerId={provider.providerId} />
 
-          {/* Booking Form */}
           {showBookingForm && selectedService && (
             <BookingForm
               provider={provider}
