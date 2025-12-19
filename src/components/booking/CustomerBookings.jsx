@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReviewForm from './ReviewForm';
+import PaymentModal from './PaymentModal';
 
 const API_BASE = 'http://localhost:8080';
 
@@ -20,6 +21,8 @@ export default function CustomerBookings() {
   const [cancelReason, setCancelReason] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(null);
   const [bookingReviews, setBookingReviews] = useState({});
+  const [showPaymentModal, setShowPaymentModal] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState({});
 
   const token = localStorage.getItem('token');
 
@@ -44,10 +47,11 @@ export default function CustomerBookings() {
       const data = await response.json();
       setBookings(data);
 
-      // Check which bookings have reviews
+      // Check payment status and reviews for completed bookings
       for (const booking of data) {
         if (booking.status === 'COMPLETED') {
           checkIfReviewed(booking.id);
+          checkPaymentStatus(booking.id);
         }
       }
     } catch (error) {
@@ -69,6 +73,21 @@ export default function CustomerBookings() {
       }
     } catch (error) {
       // Review doesn't exist, that's fine
+    }
+  };
+
+  const checkPaymentStatus = async (bookingId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/payments/status?bookingId=${bookingId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const status = await response.json();
+        setPaymentStatus(prev => ({ ...prev, [bookingId]: status.status }));
+      }
+    } catch (error) {
+      console.error('Error checking payment status:', error);
     }
   };
 
@@ -166,6 +185,8 @@ export default function CustomerBookings() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {bookings.map(booking => {
               const hasReview = bookingReviews[booking.id];
+              const isPaid = paymentStatus[booking.id] === 'PAID';
+              const canPay = booking.status === 'COMPLETED' && !isPaid;
 
               return (
                 <div key={booking.id} style={{
@@ -183,15 +204,29 @@ export default function CustomerBookings() {
                         Created {formatDate(booking.createdAt)}
                       </div>
                     </div>
-                    <div style={{
-                      padding: '6px 16px',
-                      borderRadius: '20px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      background: STATUS_CONFIG[booking.status]?.bg,
-                      color: STATUS_CONFIG[booking.status]?.color
-                    }}>
-                      {STATUS_CONFIG[booking.status]?.label}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <div style={{
+                        padding: '6px 16px',
+                        borderRadius: '20px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        background: STATUS_CONFIG[booking.status]?.bg,
+                        color: STATUS_CONFIG[booking.status]?.color
+                      }}>
+                        {STATUS_CONFIG[booking.status]?.label}
+                      </div>
+                      {isPaid && (
+                        <div style={{
+                          padding: '6px 16px',
+                          borderRadius: '20px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          background: '#d4edda',
+                          color: '#155724'
+                        }}>
+                          💳 Paid
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -228,13 +263,6 @@ export default function CustomerBookings() {
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: '15px' }}>
-                    <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Address</div>
-                    <div style={{ fontSize: '14px' }}>
-                      📍 {booking.customerAddress}
-                    </div>
-                  </div>
-
                   {booking.description && (
                     <div style={{ marginBottom: '15px' }}>
                       <div style={{ fontSize: '14px', color: '#888', marginBottom: '5px' }}>Details</div>
@@ -244,10 +272,55 @@ export default function CustomerBookings() {
                     </div>
                   )}
 
-                  {/* ✅ REVIEW SECTION */}
+                  {/* Payment Section */}
                   {booking.status === 'COMPLETED' && (
                     <div style={{
-                      background: hasReview ? '#d4edda' : '#fff3cd',
+                      background: isPaid ? '#d4edda' : '#fff3cd',
+                      padding: '15px',
+                      borderRadius: '10px',
+                      marginBottom: '15px'
+                    }}>
+                      {isPaid ? (
+                        <div>
+                          <div style={{ fontWeight: '600', marginBottom: '5px', color: '#155724' }}>
+                            ✅ Payment Completed
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#155724' }}>
+                            Thank you for your payment!
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontWeight: '600', marginBottom: '8px', color: '#856404' }}>
+                            💳 Payment Pending
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#856404', marginBottom: '10px' }}>
+                            Service completed. Please proceed with payment.
+                          </div>
+                          <button
+                            onClick={() => setShowPaymentModal(booking)}
+                            style={{
+                              padding: '10px 20px',
+                              background: '#667eea',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '14px'
+                            }}
+                          >
+                            💳 Pay Now - ₹{booking.finalPrice || booking.quotedPrice}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Review Section */}
+                  {booking.status === 'COMPLETED' && isPaid && (
+                    <div style={{
+                      background: hasReview ? '#d4edda' : '#f0f0f0',
                       padding: '15px',
                       borderRadius: '10px',
                       marginBottom: '15px'
@@ -269,11 +342,11 @@ export default function CustomerBookings() {
                         </div>
                       ) : (
                         <div>
-                          <div style={{ fontWeight: '600', marginBottom: '8px', color: '#856404' }}>
-                            ⭐ Service Completed
+                          <div style={{ fontWeight: '600', marginBottom: '8px', color: '#333' }}>
+                            ⭐ Share Your Experience
                           </div>
-                          <div style={{ fontSize: '14px', color: '#856404', marginBottom: '10px' }}>
-                            How was your experience? Share your feedback!
+                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+                            How was your experience with this service?
                           </div>
                           <button
                             onClick={() => setShowReviewForm(booking)}
@@ -418,14 +491,27 @@ export default function CustomerBookings() {
           </div>
         )}
 
-        {/* ✅ Review Form Modal */}
+        {/* Payment Modal */}
+        {showPaymentModal && (
+          <PaymentModal
+            booking={showPaymentModal}
+            onSuccess={(response) => {
+              setShowPaymentModal(null);
+              alert('✅ Payment Successful! Transaction ID: ' + response.razorpay_payment_id);
+              fetchBookings();
+            }}
+            onCancel={() => setShowPaymentModal(null)}
+          />
+        )}
+
+        {/* Review Form Modal */}
         {showReviewForm && (
           <ReviewForm
             booking={showReviewForm}
             onSuccess={(review) => {
               setShowReviewForm(null);
               alert('✅ Thank you for your review!');
-              fetchBookings(); // Refresh to show the review
+              fetchBookings();
             }}
             onCancel={() => setShowReviewForm(null)}
           />
