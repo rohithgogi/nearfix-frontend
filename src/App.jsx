@@ -5,14 +5,14 @@ import OtpVerification from './components/auth/OtpVerification';
 import RoleSelection from './components/auth/RoleSelection';
 import CustomerDashboard from './components/customer/CustomerDashboard';
 import ProviderDashboard from './components/provider/ProviderDashboard';
+import AdminDashboard from './components/admin/AdminDashboard'; // ✅ ADD THIS
 import './App.css';
 
 function AppContent() {
   const { user, loading, isCustomer, isProvider } = useAuth();
-  const [authStep, setAuthStep] = useState('login'); // login, otp, role
+  const [authStep, setAuthStep] = useState('login');
   const [phoneNumber, setPhoneNumber] = useState('');
 
-  // Debug logging
   useEffect(() => {
     console.log('App State:', {
       authStep,
@@ -36,6 +36,12 @@ function AppContent() {
   // If user is authenticated, show dashboard
   if (user) {
     console.log('User authenticated, role:', user.role);
+
+    // ✅ ADD ADMIN CHECK
+    if (user.role === 'ADMIN') {
+      return <AdminDashboard />;
+    }
+
     if (isCustomer()) {
       return <CustomerDashboard />;
     }
