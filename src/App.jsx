@@ -5,24 +5,40 @@ import OtpVerification from './components/auth/OtpVerification';
 import RoleSelection from './components/auth/RoleSelection';
 import CustomerDashboard from './components/customer/CustomerDashboard';
 import ProviderDashboard from './components/provider/ProviderDashboard';
-import AdminDashboard from './components/admin/AdminDashboard'; // ✅ ADD THIS
+import AdminDashboard from './components/admin/AdminDashboard';
+import PublicLandingPage from './components/public/PublicLandingPage';
+import ProviderSearch from './components/customer/ProviderSearch';
 import './App.css';
 
 function AppContent() {
   const { user, loading, isCustomer, isProvider } = useAuth();
   const [authStep, setAuthStep] = useState('login');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [currentRoute, setCurrentRoute] = useState('home');
 
+  // Simple router based on URL hash
   useEffect(() => {
-    console.log('App State:', {
-      authStep,
-      phoneNumber,
-      user,
-      loading,
-      isCustomer: isCustomer(),
-      isProvider: isProvider()
-    });
-  }, [authStep, phoneNumber, user, loading]);
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1) || 'home';
+      setCurrentRoute(hash);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Initial load
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Reset auth step when user logs in successfully
+  useEffect(() => {
+    if (user && authStep !== 'login') {
+      setAuthStep('login');
+      // Redirect to appropriate dashboard after successful auth
+      if (currentRoute === 'login' || currentRoute === 'home') {
+        window.location.hash = 'home';
+      }
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -33,68 +49,150 @@ function AppContent() {
     );
   }
 
-  // If user is authenticated, show dashboard
-  if (user) {
-    console.log('User authenticated, role:', user.role);
+  // ========================================
+  // 📱 PUBLIC ROUTES (No Login Required)
+  // ========================================
 
-    // ✅ ADD ADMIN CHECK
+  // Home/Landing Page
+  if (currentRoute === 'home' && !user) {
+    return <PublicLandingPage />;
+  }
+
+  // Public Search (Anyone can browse)
+  if (currentRoute === 'search') {
+    return <ProviderSearch initialServiceId={1} />;
+  }
+
+  // ========================================
+  // 🔐 LOGIN FLOW (Priority over authenticated routes during auth)
+  // ========================================
+
+  // Show login flow if on login route OR in middle of auth process
+  if (currentRoute === 'login' || (authStep !== 'login' && !user)) {
+    if (authStep === 'login') {
+      return (
+        <LoginScreen
+          onOtpSent={(phone) => {
+            setPhoneNumber(phone);
+            setAuthStep('otp');
+          }}
+        />
+      );
+    }
+
+    if (authStep === 'otp') {
+      return (
+        <OtpVerification
+          phoneNumber={phoneNumber}
+          onNewUser={(phone) => {
+            setPhoneNumber(phone);
+            setAuthStep('role');
+          }}
+          onBack={() => setAuthStep('login')}
+        />
+      );
+    }
+
+    if (authStep === 'role') {
+      return <RoleSelection phoneNumber={phoneNumber} />;
+    }
+  }
+
+  // ========================================
+  // 🔐 AUTHENTICATED ROUTES
+  // ========================================
+
+  if (user) {
+    // Admin Dashboard
     if (user.role === 'ADMIN') {
       return <AdminDashboard />;
     }
 
+    // Customer Dashboard
     if (isCustomer()) {
       return <CustomerDashboard />;
     }
+
+    // Provider Dashboard
     if (isProvider()) {
       return <ProviderDashboard />;
     }
   }
 
-  // Authentication flow
-  if (authStep === 'login') {
-    console.log('Rendering LoginScreen');
-    return (
-      <LoginScreen
-        onOtpSent={(phone) => {
-          console.log('OTP sent to:', phone);
-          setPhoneNumber(phone);
-          setAuthStep('otp');
-        }}
-      />
-    );
-  }
-
-  if (authStep === 'otp') {
-    console.log('Rendering OtpVerification for:', phoneNumber);
-    return (
-      <OtpVerification
-        phoneNumber={phoneNumber}
-        onNewUser={(phone) => {
-          console.log('New user detected, moving to role selection:', phone);
-          setPhoneNumber(phone);
-          setAuthStep('role');
-        }}
-        onBack={() => {
-          console.log('Going back to login');
-          setAuthStep('login');
-        }}
-      />
-    );
-  }
-
-  if (authStep === 'role') {
-    console.log('Rendering RoleSelection for:', phoneNumber);
-    return <RoleSelection phoneNumber={phoneNumber} />;
-  }
-
-  console.log('No matching state, this should not happen');
-  return null;
+  // ========================================
+  // 🏠 DEFAULT: Show Public Landing
+  // ========================================
+  return <PublicLandingPage />;
 }
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      {/* Navigation Bar */}
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        background: 'white',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        padding: '15px 40px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        zIndex: 1000
+      }}>
+        <div style={{
+          fontSize: '24px',
+          fontWeight: '700',
+          color: '#667eea',
+          cursor: 'pointer'
+        }} onClick={() => window.location.hash = 'home'}>
+          🔧 NearFix
+        </div>
+
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+          <a
+            href="#home"
+            style={{
+              textDecoration: 'none',
+              color: '#333',
+              fontWeight: '500'
+            }}
+          >
+            Home
+          </a>
+          <a
+            href="#search"
+            style={{
+              textDecoration: 'none',
+              color: '#333',
+              fontWeight: '500'
+            }}
+          >
+            Browse Services
+          </a>
+          <button
+            onClick={() => window.location.hash = 'login'}
+            style={{
+              padding: '8px 20px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            Login / Sign Up
+          </button>
+        </div>
+      </nav>
+
+      {/* Add padding to account for fixed nav */}
+      <div style={{ paddingTop: '70px' }}>
+        <AppContent />
+      </div>
     </AuthProvider>
   );
 }
