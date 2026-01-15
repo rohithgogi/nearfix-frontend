@@ -1,401 +1,424 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { Search, MapPin, ShoppingCart, User, ChevronDown } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8080';
 
-export default function PublicLandingPage() {
-  const { user, isAuthenticated } = useAuth();
+// Service images mapping
+const SERVICE_IMAGES = {
+  'Plumbing': 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&h=300&fit=crop',
+  'Electrical Work': 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=400&h=300&fit=crop',
+  'House Cleaning': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop',
+  'Carpentry': 'https://images.unsplash.com/photo-1597839170991-e91c46c6f0b5?w=400&h=300&fit=crop',
+  'Painting': 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=400&h=300&fit=crop',
+  'AC Repair': 'https://images.unsplash.com/photo-1631545304369-7a5c50c2d2f7?w=400&h=300&fit=crop',
+  'Pest Control': 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&h=300&fit=crop',
+  'Appliance Repair': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+  'Washing Machine Repair': 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?w=400&h=300&fit=crop',
+  'Refrigerator Repair': 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?w=400&h=300&fit=crop',
+  'Microwave Repair': 'https://images.unsplash.com/photo-1585659722983-3a675dabf23d?w=400&h=300&fit=crop',
+  'Water Purifier': 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&h=300&fit=crop'
+};
+
+export default function NearFixHomepage() {
   const [services, setServices] = useState([]);
-  const [featuredProviders, setFeaturedProviders] = useState([]);
-  const [stats, setStats] = useState({ providers: 0, services: 0, cities: 0 });
-  const [showLogin, setShowLogin] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [location, setLocation] = useState('Connaught Place, New Delhi');
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
 
   useEffect(() => {
-    fetchPublicData();
+    fetchServices();
   }, []);
 
-  const fetchPublicData = async () => {
+  const fetchServices = async () => {
     try {
-      // Fetch services (public)
-      const servicesRes = await fetch(`${API_BASE}/api/services`);
-      if (servicesRes.ok) {
-        const data = await servicesRes.json();
-        setServices(data.slice(0, 6)); // Show top 6
+      const response = await fetch(`${API_BASE}/api/services`);
+      if (response.ok) {
+        const data = await response.json();
+        setServices(data);
       }
-
-      // Mock stats - you can create a public stats endpoint later
-      setStats({ providers: 150, services: 12, cities: 25 });
     } catch (error) {
-      console.error('Error fetching public data:', error);
+      console.error('Error fetching services:', error);
     }
   };
 
   const handleServiceClick = (service) => {
-    // Navigate to search page (will be public)
-    window.location.href = `/search?service=${service.id}`;
+    window.location.href = `#search?service=${service.id}`;
   };
 
-  const handleCTAClick = () => {
-    if (isAuthenticated()) {
-      window.location.href = '/dashboard';
-    } else {
-      setShowLogin(true);
+  const handleLogin = () => {
+    window.location.href = '#login';
+  };
+
+  // Group services by category
+  const groupedServices = services.reduce((acc, service) => {
+    const category = service.category || 'OTHER';
+    if (!acc[category]) {
+      acc[category] = [];
     }
+    acc[category].push(service);
+    return acc;
+  }, {});
+
+  const categoryNames = {
+    'HOME_REPAIR': 'Home Repairs',
+    'CLEANING': 'Cleaning & Pest Control',
+    'APPLIANCE_REPAIR': 'Appliance Services',
+    'OTHER': 'Other Services'
   };
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff' }}>
+      {/* Header */}
+      <header style={{
+        position: 'sticky',
+        top: 0,
+        background: '#fff',
+        borderBottom: '1px solid #e0e0e0',
+        zIndex: 1000,
+        boxShadow: '0 2px 4px rgba(0,0,0,0.08)'
+      }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          padding: '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '24px'
+        }}>
+          {/* Logo */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            minWidth: '150px'
+          }} onClick={() => window.location.href = '#home'}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              background: '#000',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: '#fff'
+            }}>
+              N
+            </div>
+            <span style={{
+              fontSize: '22px',
+              fontWeight: '700',
+              color: '#000',
+              letterSpacing: '-0.5px'
+            }}>
+              NearFix
+            </span>
+          </div>
+
+          {/* Location Selector */}
+          <div style={{ position: 'relative', minWidth: '220px' }}>
+            <div
+              onClick={() => setShowLocationDropdown(!showLocationDropdown)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 14px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                background: '#fff',
+                transition: 'border-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = '#000'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+            >
+              <MapPin size={18} color="#666" />
+              <span style={{
+                fontSize: '14px',
+                color: '#333',
+                fontWeight: '500',
+                flex: 1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {location}
+              </span>
+              <ChevronDown size={16} color="#666" />
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div style={{
+            flex: 1,
+            maxWidth: '600px',
+            position: 'relative'
+          }}>
+            <Search
+              size={20}
+              color="#999"
+              style={{
+                position: 'absolute',
+                left: '14px',
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Search for 'Kitchen cleaning'"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 16px 12px 44px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#000'}
+              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+            />
+          </div>
+
+          {/* Right Icons */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            minWidth: '120px',
+            justifyContent: 'flex-end'
+          }}>
+            <div style={{
+              position: 'relative',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '8px',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <ShoppingCart size={22} color="#333" />
+              <span style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                background: '#ff4757',
+                color: '#fff',
+                borderRadius: '50%',
+                width: '18px',
+                height: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                fontWeight: '600'
+              }}>
+                0
+              </span>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: '#000',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.background = '#333'}
+              onMouseLeave={(e) => e.target.style.background = '#000'}
+            >
+              <User size={18} />
+              Login
+            </button>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        padding: '80px 20px',
-        textAlign: 'center'
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)',
+        padding: '60px 24px',
+        borderBottom: '1px solid #e0e0e0'
       }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          textAlign: 'center'
+        }}>
           <h1 style={{
             fontSize: '48px',
-            margin: '0 0 20px 0',
-            fontWeight: '700'
+            fontWeight: '700',
+            color: '#000',
+            margin: '0 0 16px 0',
+            letterSpacing: '-1px'
           }}>
-            🔧 NearFix
+            Home services at your doorstep
           </h1>
           <p style={{
-            fontSize: '24px',
-            margin: '0 0 40px 0',
-            opacity: 0.9
+            fontSize: '20px',
+            color: '#666',
+            margin: 0,
+            fontWeight: '400'
           }}>
-            Local Services at Your Doorstep
+            What are you looking for?
           </p>
-          <p style={{
-            fontSize: '18px',
-            margin: '0 0 40px 0',
-            lineHeight: '1.6'
-          }}>
-            Find trusted plumbers, electricians, cleaners, and more in your area.
-            Browse without login, book with confidence.
-          </p>
-
-          {!isAuthenticated() && (
-            <button
-              onClick={handleCTAClick}
-              style={{
-                padding: '16px 40px',
-                fontSize: '18px',
-                fontWeight: '700',
-                background: 'white',
-                color: '#667eea',
-                border: 'none',
-                borderRadius: '50px',
-                cursor: 'pointer',
-                boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-                transition: 'transform 0.2s'
-              }}
-              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-            >
-              Get Started - It's Free! 🚀
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Stats Section */}
+      {/* Services Grid */}
       <div style={{
-        maxWidth: '1200px',
-        margin: '-40px auto 60px',
-        padding: '0 20px'
+        maxWidth: '1400px',
+        margin: '0 auto',
+        padding: '48px 24px'
       }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '30px',
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', fontWeight: '700', color: '#667eea' }}>
-              {stats.providers}+
-            </div>
-            <div style={{ fontSize: '18px', color: '#666', marginTop: '10px' }}>
-              Verified Providers
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', fontWeight: '700', color: '#667eea' }}>
-              {stats.services}+
-            </div>
-            <div style={{ fontSize: '18px', color: '#666', marginTop: '10px' }}>
-              Service Categories
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', fontWeight: '700', color: '#667eea' }}>
-              {stats.cities}+
-            </div>
-            <div style={{ fontSize: '18px', color: '#666', marginTop: '10px' }}>
-              Cities Covered
-            </div>
-          </div>
-        </div>
-      </div>
+        {Object.entries(groupedServices).map(([category, categoryServices]) => (
+          <div key={category} style={{ marginBottom: '60px' }}>
+            <h2 style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              color: '#000',
+              marginBottom: '32px',
+              letterSpacing: '-0.5px'
+            }}>
+              {categoryNames[category] || category}
+            </h2>
 
-      {/* Services Section */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 20px' }}>
-        <h2 style={{
-          fontSize: '36px',
-          textAlign: 'center',
-          marginBottom: '50px',
-          color: '#333'
-        }}>
-          Popular Services
-        </h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '24px'
+            }}>
+              {categoryServices.map((service) => (
+                <div
+                  key={service.id}
+                  onClick={() => handleServiceClick(service)}
+                  style={{
+                    background: '#fff',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    border: '1px solid #e0e0e0',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+                    e.currentTarget.style.borderColor = '#000';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                    e.currentTarget.style.borderColor = '#e0e0e0';
+                  }}
+                >
+                  {/* Service Image */}
+                  <div style={{
+                    width: '100%',
+                    height: '180px',
+                    background: `url(${SERVICE_IMAGES[service.name] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop'})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: '12px',
+                      left: '12px',
+                      background: '#fff',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '24px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}>
+                      {service.iconEmoji || '🔧'}
+                    </div>
+                  </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '30px'
-        }}>
-          {services.map((service) => (
-            <div
-              key={service.id}
-              onClick={() => handleServiceClick(service)}
-              style={{
-                background: 'white',
-                borderRadius: '20px',
-                padding: '40px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
-                transition: 'all 0.3s',
-                border: '2px solid transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-8px)';
-                e.currentTarget.style.boxShadow = '0 12px 30px rgba(102, 126, 234, 0.3)';
-                e.currentTarget.style.borderColor = '#667eea';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.08)';
-                e.currentTarget.style.borderColor = 'transparent';
-              }}
-            >
-              <div style={{
-                fontSize: '64px',
-                marginBottom: '20px'
-              }}>
-                {service.iconEmoji || '🔧'}
-              </div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                margin: '0 0 10px 0',
-                color: '#333'
-              }}>
-                {service.name}
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: '#666',
-                margin: 0,
-                lineHeight: '1.5'
-              }}>
-                {service.description || 'Professional service at your doorstep'}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <button
-            onClick={() => window.location.href = '/services'}
-            style={{
-              padding: '14px 30px',
-              fontSize: '16px',
-              fontWeight: '600',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: 'pointer'
-            }}
-          >
-            View All Services →
-          </button>
-        </div>
-      </div>
-
-      {/* How It Works */}
-      <div style={{
-        background: '#f8f9fa',
-        padding: '80px 20px'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{
-            fontSize: '36px',
-            textAlign: 'center',
-            marginBottom: '60px',
-            color: '#333'
-          }}>
-            How It Works
-          </h2>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '40px'
-          }}>
-            {[
-              { icon: '🔍', title: 'Browse Services', desc: 'Explore our wide range of home services without any login' },
-              { icon: '📍', title: 'Find Providers', desc: 'Search for verified professionals near your location' },
-              { icon: '📅', title: 'Book Instantly', desc: 'Choose your time slot and book with just a few clicks' },
-              { icon: '⭐', title: 'Rate & Review', desc: 'Share your experience to help others make informed decisions' }
-            ].map((step, idx) => (
-              <div key={idx} style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: '100px',
-                  height: '100px',
-                  margin: '0 auto 20px',
-                  background: 'white',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '48px',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
-                }}>
-                  {step.icon}
+                  {/* Service Info */}
+                  <div style={{ padding: '20px' }}>
+                    <h3 style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: '#000',
+                      margin: '0 0 8px 0',
+                      letterSpacing: '-0.3px'
+                    }}>
+                      {service.name}
+                    </h3>
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#666',
+                      margin: 0,
+                      lineHeight: '1.5',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {service.description || 'Professional service at your doorstep'}
+                    </p>
+                  </div>
                 </div>
-                <h3 style={{
-                  fontSize: '22px',
-                  fontWeight: '600',
-                  margin: '0 0 15px 0',
-                  color: '#333'
-                }}>
-                  {step.title}
-                </h3>
-                <p style={{
-                  fontSize: '16px',
-                  color: '#666',
-                  lineHeight: '1.6',
-                  margin: 0
-                }}>
-                  {step.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        padding: '80px 20px',
-        textAlign: 'center'
-      }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{
-            fontSize: '36px',
-            margin: '0 0 20px 0',
-            fontWeight: '700'
-          }}>
-            Ready to Get Started?
-          </h2>
-          <p style={{
-            fontSize: '18px',
-            margin: '0 0 40px 0',
-            opacity: 0.9,
-            lineHeight: '1.6'
-          }}>
-            Join thousands of satisfied customers who trust NearFix for their home service needs.
-            No credit card required. Start exploring now!
-          </p>
-
-          {!isAuthenticated() ? (
-            <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => window.location.href = '/search'}
-                style={{
-                  padding: '16px 40px',
-                  fontSize: '18px',
-                  fontWeight: '700',
-                  background: 'white',
-                  color: '#667eea',
-                  border: 'none',
-                  borderRadius: '50px',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.2)'
-                }}
-              >
-                Browse Services 🔍
-              </button>
-              <button
-                onClick={handleCTAClick}
-                style={{
-                  padding: '16px 40px',
-                  fontSize: '18px',
-                  fontWeight: '700',
-                  background: 'transparent',
-                  color: 'white',
-                  border: '2px solid white',
-                  borderRadius: '50px',
-                  cursor: 'pointer'
-                }}
-              >
-                Sign Up Free 🚀
-              </button>
+              ))}
             </div>
-          ) : (
-            <button
-              onClick={() => window.location.href = '/dashboard'}
-              style={{
-                padding: '16px 40px',
-                fontSize: '18px',
-                fontWeight: '700',
-                background: 'white',
-                color: '#667eea',
-                border: 'none',
-                borderRadius: '50px',
-                cursor: 'pointer',
-                boxShadow: '0 8px 20px rgba(0,0,0,0.2)'
-              }}
-            >
-              Go to Dashboard →
-            </button>
-          )}
-        </div>
+          </div>
+        ))}
       </div>
 
       {/* Footer */}
-      <div style={{
-        background: '#1a1a1a',
-        color: 'white',
-        padding: '40px 20px',
-        textAlign: 'center'
+      <footer style={{
+        background: '#000',
+        color: '#fff',
+        padding: '48px 24px',
+        marginTop: '60px'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ fontSize: '32px', marginBottom: '20px' }}>🔧 NearFix</div>
-          <p style={{ fontSize: '14px', opacity: 0.7, margin: '0 0 20px 0' }}>
-            Your Trusted Platform for Local Home Services
-          </p>
-          <div style={{ fontSize: '12px', opacity: 0.5 }}>
-            © 2024 NearFix. Built as a portfolio project showcasing full-stack development.
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            fontSize: '32px',
+            fontWeight: '700',
+            marginBottom: '16px',
+            letterSpacing: '-0.5px'
+          }}>
+            NearFix
           </div>
-          <div style={{ marginTop: '20px', fontSize: '14px' }}>
-            <a href="https://github.com/yourusername" style={{ color: '#667eea', textDecoration: 'none', marginRight: '20px' }}>
-              GitHub
-            </a>
-            <a href="https://linkedin.com/in/yourusername" style={{ color: '#667eea', textDecoration: 'none' }}>
-              LinkedIn
-            </a>
+          <p style={{
+            fontSize: '14px',
+            color: '#999',
+            margin: '0 0 24px 0'
+          }}>
+            Your trusted platform for home services
+          </p>
+          <div style={{
+            fontSize: '12px',
+            color: '#666'
+          }}>
+            © 2024 NearFix. All rights reserved.
           </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
