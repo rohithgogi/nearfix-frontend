@@ -24,12 +24,40 @@ export default function EnhancedNearFixHome() {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('Connaught Place, New Delhi');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [stats] = useState({
     customers: '10,000+',
     providers: '500+',
     rating: 4.8,
     completedJobs: '25,000+'
   });
+
+  // Add styles for animations
+  const styles = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fadeIn {
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .animate-slideUp {
+      animation: slideUp 0.3s ease-out;
+    }
+  `;
 
   useEffect(() => {
     fetchServices();
@@ -47,7 +75,19 @@ export default function EnhancedNearFixHome() {
     }
   };
 
+  const handleCategoryClick = (category, categoryServices) => {
+    // If category has multiple services, show modal
+    if (categoryServices.length > 1) {
+      setSelectedCategory({ category, services: categoryServices });
+      setShowCategoryModal(true);
+    } else {
+      // If only one service, go directly
+      handleServiceClick(categoryServices[0]);
+    }
+  };
+
   const handleServiceClick = (service) => {
+    setShowCategoryModal(false);
     window.location.href = `#search?service=${service.id}`;
   };
 
@@ -92,6 +132,9 @@ export default function EnhancedNearFixHome() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Add animation styles */}
+      <style>{styles}</style>
+
       {/* Header */}
       <header className="sticky top-0 bg-white border-b border-gray-200 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -222,7 +265,14 @@ export default function EnhancedNearFixHome() {
                 {categoryServices.map((service) => (
                   <div
                     key={service.id}
-                    onClick={() => handleServiceClick(service)}
+                    onClick={() => {
+                      // For appliance repair category, show modal with all appliances
+                      if (category === 'APPLIANCE_REPAIR') {
+                        handleCategoryClick(category, categoryServices);
+                      } else {
+                        handleServiceClick(service);
+                      }
+                    }}
                     className="group bg-white rounded-2xl overflow-hidden cursor-pointer border border-gray-200 hover:border-black hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                   >
                     {/* Service Image */}
@@ -270,33 +320,6 @@ export default function EnhancedNearFixHome() {
                   </div>
                 ))}
               </div>
-
-              {/* Category Modal/Expansion (for appliance services) */}
-              {category === 'APPLIANCE_REPAIR' && selectedCategory === category && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedCategory(null)}>
-                  <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-                    <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
-                      <h3 className="text-2xl font-bold text-gray-900">Appliance Services</h3>
-                      <button onClick={() => setSelectedCategory(null)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                        <X size={24} />
-                      </button>
-                    </div>
-                    <div className="p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {categoryServices.map((service) => (
-                        <div
-                          key={service.id}
-                          onClick={() => handleServiceClick(service)}
-                          className="p-4 border border-gray-200 rounded-xl hover:border-black hover:shadow-lg transition-all cursor-pointer"
-                        >
-                          <div className="text-3xl mb-2">{service.iconEmoji}</div>
-                          <div className="font-semibold text-gray-900">{service.name}</div>
-                          <div className="text-sm text-gray-600 mt-1">View Services →</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
@@ -310,6 +333,140 @@ export default function EnhancedNearFixHome() {
           </div>
         )}
       </div>
+
+      {/* Category Modal - Similar to Urban Company */}
+      {showCategoryModal && selectedCategory && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setShowCategoryModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden animate-slideUp shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {categoryNames[selectedCategory.category] || selectedCategory.category}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Select a service to continue</p>
+              </div>
+              <button
+                onClick={() => setShowCategoryModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={24} className="text-gray-600" />
+              </button>
+            </div>
+
+            {/* Modal Content - Services Grid */}
+            <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+              {/* Home Appliances Section */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="text-2xl">🏠</span>
+                  Home Appliances
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {selectedCategory.services
+                    .filter(s => ['AC Repair', 'Washing Machine Repair', 'Refrigerator Repair', 'Microwave Repair'].includes(s.name))
+                    .map((service) => (
+                      <div
+                        key={service.id}
+                        onClick={() => handleServiceClick(service)}
+                        className="p-4 border-2 border-gray-200 rounded-xl hover:border-black hover:shadow-lg transition-all cursor-pointer group bg-white"
+                      >
+                        <div className="flex flex-col items-center text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full flex items-center justify-center text-3xl mb-3 group-hover:scale-110 transition-transform">
+                            {service.iconEmoji || '🔧'}
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm mb-1">
+                            {service.name.replace(' Repair', '')}
+                          </div>
+                          <div className="text-xs text-gray-500 flex items-center gap-1">
+                            <Star className="text-yellow-500 fill-yellow-500" size={12} />
+                            4.8
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Kitchen Appliances Section */}
+              {selectedCategory.services.some(s => ['Microwave Repair', 'Refrigerator Repair'].includes(s.name)) && (
+                <div className="mb-8">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="text-2xl">🍳</span>
+                    Kitchen Appliances
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {selectedCategory.services
+                      .filter(s => ['Microwave Repair', 'Refrigerator Repair'].includes(s.name))
+                      .map((service) => (
+                        <div
+                          key={service.id}
+                          onClick={() => handleServiceClick(service)}
+                          className="p-4 border-2 border-gray-200 rounded-xl hover:border-black hover:shadow-lg transition-all cursor-pointer group bg-white"
+                        >
+                          <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 bg-gradient-to-br from-orange-50 to-orange-100 rounded-full flex items-center justify-center text-3xl mb-3 group-hover:scale-110 transition-transform">
+                              {service.iconEmoji || '🔧'}
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm mb-1">
+                              {service.name.replace(' Repair', '')}
+                            </div>
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Star className="text-yellow-500 fill-yellow-500" size={12} />
+                              4.8
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Other Services */}
+              {selectedCategory.services
+                .filter(s => !['AC Repair', 'Washing Machine Repair', 'Refrigerator Repair', 'Microwave Repair'].includes(s.name))
+                .length > 0 && (
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="text-2xl">⚙️</span>
+                    Other Services
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {selectedCategory.services
+                      .filter(s => !['AC Repair', 'Washing Machine Repair', 'Refrigerator Repair', 'Microwave Repair'].includes(s.name))
+                      .map((service) => (
+                        <div
+                          key={service.id}
+                          onClick={() => handleServiceClick(service)}
+                          className="p-4 border-2 border-gray-200 rounded-xl hover:border-black hover:shadow-lg transition-all cursor-pointer group bg-white"
+                        >
+                          <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 bg-gradient-to-br from-purple-50 to-purple-100 rounded-full flex items-center justify-center text-3xl mb-3 group-hover:scale-110 transition-transform">
+                              {service.iconEmoji || '🔧'}
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm mb-1">
+                              {service.name.replace(' Repair', '')}
+                            </div>
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Star className="text-yellow-500 fill-yellow-500" size={12} />
+                              4.8
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-black text-white py-12 lg:py-16 mt-20">
