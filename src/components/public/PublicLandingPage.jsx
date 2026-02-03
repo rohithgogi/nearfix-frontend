@@ -4,40 +4,40 @@ const API_BASE = 'http://localhost:8080';
 
 const SERVICE_CATEGORIES = [
   {
-    id: 'home',
-    name: 'Home Care',
-    icon: '🏠',
-    color: '#667eea',
-    description: 'Cleaning, repairs & maintenance'
-  },
-  {
     id: 'professionals',
     name: 'Professionals',
     icon: '👨‍💼',
+    color: '#667eea',
+    description: 'Plumbers, electricians & carpenters'
+  },
+  {
+    id: 'homecare',
+    name: 'Homecare',
+    icon: '🏠',
     color: '#764ba2',
-    description: 'Plumbers, electricians & more'
+    description: 'Cleaning, painting & maintenance'
   },
   {
-    id: 'beauty',
-    name: 'Beauty & Wellness',
-    icon: '💇',
-    color: '#f093fb',
-    description: 'Salon & wellness services'
-  },
-  {
-    id: 'appliances',
-    name: 'Appliances',
+    id: 'appliance',
+    name: 'Appliance Repair',
     icon: '🔧',
-    color: '#4facfe',
+    color: '#f093fb',
     description: 'AC, fridge & appliance repairs'
+  },
+  {
+    id: 'pest',
+    name: 'Pest Control',
+    icon: '🦟',
+    color: '#4facfe',
+    description: 'Cockroach, termite & pest control'
   }
 ];
 
 const SERVICE_MAP = {
-  home: ['House Cleaning', 'Painting'],
   professionals: ['Plumbing', 'Electrical Work', 'Carpentry'],
-  beauty: [],
-  appliances: ['AC Repair']
+  homecare: ['House Cleaning', 'Kitchen Deep Cleaning', 'Bathroom Deep Cleaning', 'Painting', 'Wall Plastering', 'Floor Tiles', 'False Ceiling', 'Bathroom Fitting', 'Door & Window Repair'],
+  appliance: ['AC Repair', 'Washing Machine Repair', 'Refrigerator Repair', 'Microwave Repair', 'Water Purifier Service', 'Chimney Repair', 'Geyser Repair'],
+  pest: ['Cockroach Control', 'Termite Control', 'Bed Bug Control', 'Rodent Control', 'Mosquito Control']
 };
 
 export default function PublicLandingPage() {
@@ -83,92 +83,7 @@ export default function PublicLandingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f9fafb, #ffffff)' }}>
-      {/* Single Header */}
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #e5e7eb',
-        zIndex: 50,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{
-          maxWidth: '1280px',
-          margin: '0 auto',
-          padding: '12px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px'
-        }}>
-          {/* Logo */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            cursor: 'pointer'
-          }} onClick={() => {
-            window.location.href = '#home';
-            setSelectedCategory(null);
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              background: 'linear-gradient(to bottom right, #667eea, #764ba2)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}>
-              <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>N</span>
-            </div>
-            <div>
-              <div style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                background: 'linear-gradient(to right, #667eea, #764ba2)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}>
-                NearFix
-              </div>
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>Your Local Services</div>
-            </div>
-          </div>
-
-          {/* Login Button */}
-          <button
-            onClick={() => window.location.href = '#login'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 24px',
-              background: 'linear-gradient(to right, #667eea, #764ba2)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.boxShadow = '0 10px 15px rgba(0,0,0,0.2)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <span>👤</span>
-            <span>Login</span>
-          </button>
-        </div>
-      </header>
+      {/* Removed duplicate header - using App.jsx fixed navigation instead */}
 
       {/* Hero Section */}
       <div style={{
@@ -348,7 +263,7 @@ export default function PublicLandingPage() {
           Choose a category to see available services
         </p>
 
-        {/* Category Cards */}
+        {/* Category Cards - NOW 4 CATEGORIES */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',

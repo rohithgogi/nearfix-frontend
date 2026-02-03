@@ -129,65 +129,112 @@ function App() {
   return (
     <AuthProvider>
       {/* Navigation Bar */}
-      <nav style={{
-        position: 'fixed',
+      {/* Single Header */}
+      <header style={{
+        position: 'sticky',
         top: 0,
-        left: 0,
-        right: 0,
-        background: 'white',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        padding: '15px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        zIndex: 1000
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid #e5e7eb',
+        zIndex: 50,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <div style={{
-          fontSize: '24px',
-          fontWeight: '700',
-          color: '#667eea',
-          cursor: 'pointer'
-        }} onClick={() => window.location.hash = 'home'}>
-          🔧 NearFix
-        </div>
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px'
+        }}>
+          {/* Logo */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            cursor: 'pointer'
+          }} onClick={() => window.location.hash = 'home'}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: 'linear-gradient(to bottom right, #667eea, #764ba2)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}>
+              <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>N</span>
+            </div>
+            <div>
+              <div style={{
+                fontSize: '20px',
+                fontWeight: 'bold',
+                background: 'linear-gradient(to right, #667eea, #764ba2)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
+                NearFix
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>Your Local Services</div>
+            </div>
+          </div>
 
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <a
-            href="#home"
-            style={{
-              textDecoration: 'none',
-              color: '#333',
-              fontWeight: '500'
-            }}
-          >
-            Home
-          </a>
-          <a
-            href="#search"
-            style={{
-              textDecoration: 'none',
-              color: '#333',
-              fontWeight: '500'
-            }}
-          >
-            Browse Services
-          </a>
-          <button
-            onClick={() => window.location.hash = 'login'}
-            style={{
-              padding: '8px 20px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '20px',
-              cursor: 'pointer',
-              fontWeight: '600'
-            }}
-          >
-            Login / Sign Up
-          </button>
+          {/* Navigation Links + Login */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <a
+              href="#home"
+              style={{
+                textDecoration: 'none',
+                fontWeight: '500',
+                color: '#374151'
+              }}
+            >
+              Home
+            </a>
+            <a
+              href="#search"
+              style={{
+                textDecoration: 'none',
+                fontWeight: '500',
+                color: '#374151'
+              }}
+            >
+              Browse Services
+            </a>
+
+            <button
+              onClick={() => window.location.hash = 'login'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 24px',
+                background: 'linear-gradient(to right, #667eea, #764ba2)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                transition: 'all 0.3s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.boxShadow = '0 10px 15px rgba(0,0,0,0.2)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <span>👤</span>
+              <span>Login / Sign Up</span>
+            </button>
+          </div>
         </div>
-      </nav>
+      </header>
 
       {/* Add padding to account for fixed nav */}
       <div style={{ paddingTop: '70px' }}>
